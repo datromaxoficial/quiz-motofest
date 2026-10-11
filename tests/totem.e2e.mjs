@@ -71,7 +71,7 @@ async function jogar(page, plano, nome = 'Maria Teste', prints) {
   return page.evaluate(() => ({ partida: window.__quiz.partida(), leads: JSON.parse(localStorage.getItem('eg_leads') || '[]') }));
 }
 
-for (const viewport of [{ width: 1280, height: 800 }, { width: 1194, height: 834 }]) {
+for (const viewport of [{ width: 1280, height: 800 }, { width: 1194, height: 834 }, { width: 390, height: 844 }]) {
   const tam = `${viewport.width}x${viewport.height}`;
 
   test(`${tam} · casos 1 e 12: acerta tudo, ganha cupom com código e tela de vitória`, async () => {

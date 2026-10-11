@@ -12,6 +12,22 @@ const { clamp, lerp } = MathUtils;
 const TAU = Math.PI * 2;
 const suave = (atual, alvo, k, dt) => atual + (alvo - atual) * (1 - Math.exp(-k * dt));
 
+// Cinemática inversa de 2 ossos (ombro-cotovelo-mão ou quadril-joelho-pé).
+// (dx,dy,dz) = alvo a partir da junta; pref = para onde o cotovelo/joelho deve apontar.
+// Devolve os ângulos no formato das juntas do EGon: x/z da junta e a dobra do meio.
+function ik2(dx, dy, dz, L1, L2, pref) {
+  let d = Math.hypot(dx, dy, dz) || 1e-4;
+  const dir = [dx / d, dy / d, dz / d];
+  d = clamp(d, Math.abs(L1 - L2) + 1e-3, L1 + L2 - 1e-3);
+  const alfa = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
+  const dobra = Math.PI - Math.acos(clamp((L1 * L1 + L2 * L2 - d * d) / (2 * L1 * L2), -1, 1));
+  const pd = pref[0] * dir[0] + pref[1] * dir[1] + pref[2] * dir[2];
+  let perp = [pref[0] - dir[0] * pd, pref[1] - dir[1] * pd, pref[2] - dir[2] * pd];
+  const pl = Math.hypot(...perp) || 1; perp = perp.map((v) => v / pl);
+  const U = dir.map((v, i) => v * Math.cos(alfa) + perp[i] * Math.sin(alfa));
+  return { x: Math.atan2(-U[2], -U[1]), z: Math.asin(clamp(U[0], -1, 1)), dobra };
+}
+
 // ---------- materiais ----------
 const MAT = {
   branco: new MeshPhysicalMaterial({ color: 0xEEF2F8, roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.7 }),
@@ -275,7 +291,7 @@ export class Egon {
   // ---------- API ----------
   setAcao(nome) { if (this.acao !== nome) { this.acao = nome; this.tAcao = 0; } }
   setExpressao(nome) { this.rosto.expr = nome; }
-  gesto(nome, dur) { this.efeitos.push({ nome, t: 0, dur: dur || { pulo: 0.7, giro: 0.9, susto: 0.5, aterrissa: 0.45, cocega: 0.5 }[nome] || 0.6 }); }
+  gesto(nome, dur) { this.efeitos.push({ nome, t: 0, dur: dur || { pulo: 0.7, giro: 0.9, susto: 0.5, aterrissa: 0.45, cocega: 0.5, montar: 0.42 }[nome] || 0.6 }); }
   segurarCaneca(sim, nivel = 1) {
     this.comCaneca = sim; this.caneca.visible = true; this.caneca.userData.nivelAlvo = nivel;
     if (sim && this.caneca.userData.nivel > nivel) this.caneca.userData.nivel = nivel;
@@ -366,6 +382,24 @@ export class Egon {
         p.b[0].z = -2.9 * k; p.b[1].z = 2.9 * k; p.b[0].x = p.b[1].x = -0.15; p.b[0].ex = p.b[1].ex = -0.15;
         p.y = 0.04 * k; p.troncoX = -0.1 * k; p.cabX = -0.25 * k; p.inclZ = Math.sin(t * 2) * 0.05; p.olhar = 0.2; break;
       }
+      case 'pilotar': { // sentado no banco, mãos nas manoplas e pés nas pedaleiras (encaixe por cinemática inversa)
+        const a = this.apoios || { mao: [0.46, 1.5, 0.58], pe: [0.3, 0.7, 0.28], assentoY: 0.985 };
+        const vib = Math.sin(t * 55) * 0.003;
+        const y = a.assentoY - 0.593; const tx = 0.2;
+        p.y = y + vib; p.inclX = 0; p.inclZ = 0; p.giro = 0; p.troncoX = tx; p.troncoY = 0; p.troncoZ = 0; p.cabX = -0.12; p.olhar = 0.7;
+        const ty = 0.86 + y; const c = Math.cos(tx); const sn = Math.sin(tx);
+        [-1, 1].forEach((s, i) => {
+          // braço: alvo levado para o referencial do tronco inclinado
+          const vy = a.mao[1] - ty; const vz = a.mao[2];
+          const ly = vy * c + vz * sn - 0.34; const lz = -vy * sn + vz * c;
+          const b = ik2(s * a.mao[0] - s * 0.4, ly, lz, 0.29, 0.31, [0, -1, -0.35]);
+          p.b[i] = { x: b.x, z: b.z, ex: -b.dobra, ez: 0 };
+          // perna: do quadril até a pedaleira
+          const l = ik2(s * a.pe[0] - s * 0.15, a.pe[1] - (0.7 + y), a.pe[2], 0.28, 0.33, [0, 0.35, 1]);
+          p.p[i] = { x: l.x, z: l.z, j: l.dobra };
+        });
+        break;
+      }
       case 'dormir': {
         p.y = -0.04; p.troncoX = 0.1 + sn(t * 1.2) * 0.03; p.cabX = 0.28 + sn(t * 1.2) * 0.04; p.cabZ = 0.22;
         p.b[0].z = -0.05; p.b[1].z = 0.05; p.olhar = 0; break;
@@ -394,6 +428,7 @@ export class Egon {
       if (e.nome === 'giro') giro += TAU * (1 - (1 - k) ** 3);
       if (e.nome === 'susto') { sy += Math.sin(k * Math.PI) * 0.12; sx -= Math.sin(k * Math.PI) * 0.06; extraY += Math.sin(k * Math.PI) * 0.15; }
       if (e.nome === 'aterrissa') { const s = Math.sin(k * Math.PI) * (1 - k); sy -= s * 0.25; sx += s * 0.16; }
+      if (e.nome === 'montar') { extraY += Math.sin(k * Math.PI) * 0.22; const sq = k > 0.8 ? (1 - k) / 0.2 : 0; sy -= sq * 0.08; sx += sq * 0.05; }
       if (e.nome === 'cocega') { tremor += Math.sin(k * 40) * (1 - k) * 0.12; sy += Math.sin(k * Math.PI) * 0.05; }
       return e.t < e.dur;
     });

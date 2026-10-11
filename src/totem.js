@@ -23,23 +23,63 @@ let travado = false;
 
 // ---------- unidades estáveis (o teclado virtual não encolhe o layout) ----------
 const base = { w: innerWidth, h: innerHeight };
+// Paisagem: palco de 128 x 80 unidades. Retrato (celular ou tablet em pé): 80 unidades de largura
+// e a altura que couber; as telas viram coluna e o EGon ocupa o espaço da âncora no fluxo.
 function medidas() {
-  if (Math.abs(innerWidth - base.w) > 2) { base.w = innerWidth; base.h = innerHeight; } else if (innerHeight > base.h) base.h = innerHeight;
-  const u = Math.min(base.w / 128, base.h / 80);
+  // A altura só fica "congelada" enquanto o teclado virtual está aberto (campo em foco);
+  // em qualquer outro caso (janela, tela cheia, barra do navegador, rotação) acompanha a tela.
+  const digitando = document.activeElement?.tagName === 'INPUT' && document.activeElement.type !== 'checkbox';
+  if (!digitando || Math.abs(innerWidth - base.w) > 2) { base.w = innerWidth; base.h = innerHeight; } else if (innerHeight > base.h) base.h = innerHeight;
+  const retrato = base.h > base.w * 1.05;
+  const larg = retrato ? 80 : 128;
+  const u = retrato ? Math.min(base.w / 80, base.h / 118) : Math.min(base.w / 128, base.h / 80);
+  const alt = retrato ? base.h / u : 80;
   const r = document.documentElement.style;
   r.setProperty('--u', `${u}px`);
-  r.setProperty('--ox', `${(base.w - u * 128) / 2}px`);
-  r.setProperty('--oy', `${(base.h - u * 80) / 2}px`);
+  r.setProperty('--larg', larg); r.setProperty('--alt', alt.toFixed(2));
+  r.setProperty('--ox', `${(base.w - u * larg) / 2}px`);
+  r.setProperty('--oy', `${(base.h - u * alt) / 2}px`);
+  const mudou = document.body.classList.contains('retrato') !== retrato;
+  document.body.classList.toggle('retrato', retrato);
+  if (mudou) requestAnimationFrame(() => { ajustarManchete(); if (window.__egon) window.__egon.calcAlvo(true); });
+}
+
+// A manchete da tela inicial nunca passa de 3 linhas: diminui a letra até caber.
+function ajustarManchete() {
+  const el = document.getElementById('frase-descanso'); if (!el || !el.textContent) return;
+  el.style.fontSize = '';
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  const limite = base * 0.96 * 3 + 2;
+  let k = 1;
+  while (k > 0.55) {
+    const h = [...el.querySelectorAll('.w')].reduce((m, w) => Math.max(m, w.offsetTop + w.offsetHeight), 0) - (el.querySelector('.w')?.offsetTop || 0);
+    if (h <= limite * k) break;
+    k -= 0.05; el.style.fontSize = `${base * k}px`;
+  }
 }
 medidas();
 addEventListener('resize', medidas);
+document.addEventListener('fullscreenchange', () => setTimeout(medidas, 60));
+document.addEventListener('focusout', () => setTimeout(medidas, 400));
 
 // ---------- camadas ----------
-const palco = new Palco($('#palco'), $('#balao'));
+function criarPalco() {
+  try { return new Palco($('#palco'), $('#balao')); } catch (e) {
+    console.warn('EGon 3D indisponível neste aparelho; o quiz segue sem ele.', e);
+    $('#palco').hidden = true;
+    const nada = () => {}; const vazio = { x: 0, y: 0 };
+    const egon = { cabeca: { getWorldPosition: (v) => v }, olharAlvo: { clone: () => ({}) } };
+    return new Proxy({ egon, pos: {}, pilotando: false, motoEstacionada: false, arrastando: false, ultimoToque: 0 }, {
+      get: (alvo, k) => (k in alvo ? alvo[k] : k === 'tocouEgonAgora' ? () => false : k === 'mundoParaTela' ? () => vazio : nada),
+      set: (alvo, k, v) => { alvo[k] = v; return true; },
+    });
+  }
+}
+const palco = criarPalco();
 const fundo = new Fundo($('#fx-fundo'));
 const fx = new Efeitos($('#fx'));
 window.__egon = palco; // ajuda na manutenção pelo console e nos testes automáticos
-window.__quiz = { partida: () => partida, escolhas: () => escolhas, regras: () => regras };
+window.__quiz = { partida: () => partida, escolhas: () => escolhas, regras: () => regras, cena: (i) => { cenaToken += 1; aplicarCena(CENAS[i]); }, estado: () => ({ cenaToken, cenaLonga, telaAtual }) };
 
 // ---------- texto animado palavra por palavra ----------
 function palavras(el, html, inicio = 0, passo = 60) {
@@ -61,7 +101,7 @@ const ESPONTANEO = {
   cadastro: ['olhar', 'alongar'],
 };
 const ANCORAS = { descanso: '#ancora-descanso', cadastro: '#ancora-cadastro', quiz: '#ancora-quiz', resultado: '#ancora-resultado', pausa: '#ancora-pausa' };
-function mostrar(nome) {
+function mostrar(nome, { deMoto = false } = {}) {
   if (config?.pausado && nome !== 'pausa') nome = 'pausa';
   const antes = document.querySelector('.tela.ativa');
   const nova = $(`#tela-${nome}`);
@@ -73,7 +113,8 @@ function mostrar(nome) {
   }
   telaAtual = nome;
   palco.calar();
-  palco.irPara($(ANCORAS[nome]), { semAnel: nome === 'quiz' || nome === 'cadastro', balao: nome === 'descanso' ? undefined : 'cima' });
+  const opcAncora = { semAnel: nome === 'quiz' || nome === 'cadastro', balao: nome === 'descanso' ? undefined : 'cima' };
+  if (deMoto && !palco.arrastando) { palco.irDeMoto($(ANCORAS[nome]), opcAncora); tocar('vrum'); } else { palco.desmontarMoto(); palco.irPara($(ANCORAS[nome]), opcAncora); }
   if (nome === 'descanso') iniciarDescanso(); else pararDescanso();
   if (nome === 'pausa') iniciarSono(); else pararSono();
   palco.espontaneo(ESPONTANEO[nome] || null);
@@ -90,6 +131,7 @@ const REACOES = [
 palco.aoTocar = (combo, x, y) => {
   fx.explosao(x, y, { n: 14, forca: 0.6, cores: ['#FFFFFF', '#6FE3FF', '#FFE27A'] });
   armarInatividade();
+  if (palco.pilotando) { palco.expressaoTemp(combo > 2 ? 'risada' : 'piscar', 1200); palco.falar(sorteio(['Bi-bi! 🏍️', 'Olha o piloto aqui!', 'Segura firme!']), 1400); tocar('vrum'); return; }
   if (telaAtual === 'quiz' && !travado && combo === 1 && Math.random() < 0.5) {
     palco.gesto('pulo'); palco.expressaoTemp('piscar', 1200); palco.falar(sorteio(['Psiu! Foca na pergunta 😜', 'Eu sei a resposta... mas não conto!', 'Sem cola, hein! 😄']), 1900); tocar('cocega'); return;
   }
@@ -122,7 +164,7 @@ function atualizarTextosRegra() {
   $('#passo-perguntas').innerHTML = `${r.totalPerguntas} perguntas<br>de trânsito`;
   $('#passo-chopp').innerHTML = r.acertosParaGanhar >= r.decisivas ? `Acertou as ${r.decisivas} finais?<br>Chopp na mão!` : `Acertou ${r.acertosParaGanhar} das ${r.decisivas} finais?<br>Chopp na mão!`;
   CENAS[0].sub = `${r.totalPerguntas} perguntas rápidas sobre trânsito. ${frasePremio(r)}`;
-  CENAS[4].frase = `${r.acertosParaGanhar} acertos finais = <span class="ouro">1 chopp</span>`;
+  CENAS[5].frase = `${r.acertosParaGanhar} acertos finais = <span class="ouro">1 chopp</span>`;
 }
 const CENAS = [
   { frase: 'Acerte e ganhe um <span class="ouro">chopp gelado</span>', sub: '5 perguntas rápidas sobre trânsito. As 3 últimas valem chopp!',
@@ -133,10 +175,12 @@ const CENAS = [
     egon: () => { palco.acaoTemp('pensar', 4200); palco.expressaoTemp('pensando', 4200); palco.falar('Hmm... será que você acerta tudo?', 3800); } },
   { frase: 'Pode ir, <span class="ouro">estaremos lá!</span>', sub: 'Exclusive Gold. Proteção veicular de verdade.',
     egon: async () => { voo([[0.95, 0.2], [0.4, 0.14], [0.75, 0.24]], 'super', 1000); await espera(3300); palco.acaoTemp('joinha', 2200); palco.expressaoTemp('piscar', 2200); palco.falar('Exclusive Gold sempre com você!', 2600); } },
+  { frase: 'Bora pro <span class="ouro">Motofest!</span>', sub: 'Vem pro estande da Exclusive Gold testar o que você sabe.',
+    egon: () => cenaMoto() },
   { frase: '3 acertos finais = <span class="ouro">1 chopp</span>', sub: 'É rapidinho. Toque na tela para começar.',
     egon: async () => { palco.caneca(true, 0); palco.acao('segurar'); palco.expressao('coracao'); await espera(400); palco.nivelCaneca(1); palco.falar('Chopp gelado te esperando! 🍺', 3200); await espera(3600); palco.acaoTemp('brinde', 1600); await espera(1700); palco.caneca(false); palco.acao('idle'); palco.expressao('normal'); } },
 ];
-let cenaIdx = 0; let cenaTimer = null; let cenaToken = 0;
+let cenaIdx = 0; let cenaTimer = null; let cenaToken = 0; let cenaLonga = false; // cena longa (moto) segura a troca automática
 
 function voo(pontos, acao, passo) { // pontos em fração da tela; volta para a âncora no fim
   const token = cenaToken;
@@ -144,6 +188,39 @@ function voo(pontos, acao, passo) { // pontos em fração da tela; volta para a 
   pontos.forEach(([fx_, fy], i) => setTimeout(() => { if (token === cenaToken && telaAtual === 'descanso' && !palco.arrastando) palco.voarPara(innerWidth * fx_, innerHeight * fy + alt, alt, acao); }, i * passo));
   setTimeout(() => { if (token === cenaToken && telaAtual === 'descanso') palco.irPara($('#ancora-descanso')); }, pontos.length * passo);
 }
+// O EGon chama a moto, caminha até ela, sobe, acelera para fora da tela e volta pelo outro lado.
+async function cenaMoto() {
+  cenaLonga = true;
+  try { await rodarCenaMoto(); } finally {
+    cenaLonga = false;
+    // se algo interrompeu no meio (toque, arrasto), ele volta para o lugar e desce da moto
+    if (telaAtual === 'descanso' && (palco.pilotando || palco.motoEstacionada) && !palco.motoChegada) palco.irDeMoto($('#ancora-descanso'));
+  }
+}
+async function rodarCenaMoto() {
+  const token = cenaToken; const ok = () => token === cenaToken && telaAtual === 'descanso' && !palco.arrastando;
+  const ancora = $('#ancora-descanso'); const u = ancora.getBoundingClientRect().height / 47;
+  const xTela = () => palco.mundoParaTela(palco.pos).x;
+  const esperarAte = async (cond, max) => { const t0 = performance.now(); while (!cond() && performance.now() - t0 < max) { await espera(100); if (!ok()) return; } };
+  palco.expressaoTemp('surpreso', 1000); palco.falar('Peraí... vou chamar a minha moto! 🏍️', 2400); tocar('chopp');
+  await espera(900); if (!ok()) return;
+  await new Promise((resolve) => { palco.chamarMoto(-6 * u, resolve); setTimeout(resolve, 9000); });
+  if (!ok() || !palco.pilotando) return;
+  palco.expressaoTemp('feliz', 2400); tocar('vrum'); palco.falar('Segura que lá vou eu!', 2000);
+  await espera(1800); if (!ok()) return;
+  // sai devagar pela direita...
+  palco.dirigirPara(innerWidth + 60 * u);
+  await esperarAte(() => xTela() > innerWidth + 30 * u, 9000); if (!ok()) return;
+  await espera(700); if (!ok()) return;
+  // ...e volta pelo mesmo lado, sem passar por cima dos textos
+  tocar('vrum');
+  await new Promise((res) => {
+    palco.irDeMoto(ancora, {}, () => { res(); if (telaAtual !== 'descanso') return; palco.acaoTemp('joinha', 2000); palco.expressaoTemp('piscar', 2000); palco.falar('Capacete sempre afivelado! 😎', 2600); });
+    setTimeout(res, 12000);
+  });
+  await espera(2400);
+}
+
 function apontarCTA(fala) {
   const r = $('#cta').getBoundingClientRect();
   palco.apontarPara(r.left + r.width * 0.6, r.top + r.height / 2, 2400); palco.expressaoTemp('feliz', 2400); palco.falar(fala, 2600);
@@ -151,17 +228,17 @@ function apontarCTA(fala) {
 
 function aplicarCena(c, primeira) {
   const h = $('#frase-descanso');
-  const entrar = () => { palavras(h, c.frase, 0, 70); h.classList.remove('sai'); h.classList.remove('entra'); void h.offsetWidth; h.classList.add('entra'); };
+  const entrar = () => { palavras(h, c.frase, 0, 70); ajustarManchete(); h.classList.remove('sai'); h.classList.remove('entra'); void h.offsetWidth; h.classList.add('entra'); };
   if (primeira) entrar(); else { h.classList.remove('entra'); h.classList.add('sai'); setTimeout(entrar, 380); }
   const s = $('#sub-descanso'); s.classList.add('troca'); setTimeout(() => { s.textContent = c.sub; s.classList.remove('troca'); }, primeira ? 0 : 380);
   // se alguém está brincando com o EGon agora, ele não interrompe a brincadeira
-  if (performance.now() - (palco.ultimoToque || 0) > 4000 && !palco.arrastando) c.egon();
+  if (performance.now() - (palco.ultimoToque || 0) > 4000 && !palco.arrastando && !palco.pilotando && !palco.motoEstacionada) c.egon();
 }
 function iniciarDescanso() {
   pararDescanso();
   cenaIdx = 0; palco.acao('idle'); palco.expressao('normal'); palco.caneca(false);
   setTimeout(() => { if (telaAtual === 'descanso') aplicarCena(CENAS[0], true); }, 500);
-  cenaTimer = setInterval(() => { cenaToken += 1; cenaIdx = (cenaIdx + 1) % CENAS.length; palco.acao('idle'); palco.expressao('normal'); aplicarCena(CENAS[cenaIdx]); }, 8000);
+  cenaTimer = setInterval(() => { if (cenaLonga || palco.pilotando || palco.motoEstacionada) return; cenaToken += 1; cenaIdx = (cenaIdx + 1) % CENAS.length; palco.acao('idle'); palco.expressao('normal'); aplicarCena(CENAS[cenaIdx]); }, 8000);
 }
 function pararDescanso() { clearInterval(cenaTimer); cenaTimer = null; cenaToken += 1; }
 
@@ -342,7 +419,7 @@ function iniciarQuiz() {
     ol.appendChild(li);
   });
   palco.acao('pensar'); palco.expressao('pensando');
-  mostrar('quiz');
+  mostrar('quiz', { deMoto: true });
   $('#q-texto').innerHTML = ''; $('#q-opcoes').innerHTML = '';
   setTimeout(renderPergunta, 350);
 }
@@ -552,9 +629,9 @@ function voltarInicio() {
   $('#modal').hidden = true; $('#aviso-chopp').classList.remove('mostra');
   document.activeElement?.blur();
   palco.caneca(false);
-  mostrar('descanso');
+  mostrar('descanso', { deMoto: telaAtual === 'resultado' });
 }
-document.querySelectorAll('[data-acao="inicio"]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); tocar('toque'); voltarInicio(); }));
+document.querySelectorAll('[data-acao="inicio"]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (telaAtual === 'descanso') return; tocar('toque'); voltarInicio(); }));
 
 function deviceId() {
   try {

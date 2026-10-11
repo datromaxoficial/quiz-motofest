@@ -163,3 +163,10 @@ button.tag.entregue { border: 0; cursor: pointer; font: inherit; font-size: 12px
 .pergunta .p-topo .p-tag { width: 200px !important; flex: none; }
 .pergunta .p-topo .p-ativa { margin-left: auto; white-space: nowrap; }
 .pergunta .p-topo .p-ativa input { width: auto; }
+@media (max-width: 520px) {
+  .abas button { padding: 12px 10px; font-size: 14px; }
+  .acoes .btn { flex: 1 1 100%; }
+  .pergunta .p-topo { flex-wrap: wrap; }
+  .pergunta .p-topo .p-tag { width: 100% !important; order: 3; }
+  .tabela-wrap { overflow-x: auto; }
+}

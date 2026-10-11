@@ -6,9 +6,12 @@ import {
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Egon } from './egon3d.js';
+import { criarMoto, PONTOS_MOTO } from './moto3d.js';
 
 const { clamp } = MathUtils;
 const ALTURA_EGON = 2.15; // altura do boneco em unidades do mundo (com os chifres)
+const ESCALA_MOTO = 0.74;
+const MOTO_Z = 0.3; // a moto fica um pouco à frente do EGon, para ele sentar no banco // de moto ele fica um pouco menor, para a moto caber no layout
 
 // Mola criticamente amortecida (estilo SmoothDamp).
 function amortecer(atual, alvo, velObj, chave, tempo, dt, max = Infinity) {
@@ -56,6 +59,10 @@ export class Palco {
     this.luzPeito = new PointLight(0x55E6FF, 1.2, 3); this.cena.add(this.luzPeito);
 
     this.egon = new Egon(); this.cena.add(this.egon.raiz);
+    this.moto = criarMoto(this.egon.emblema.material.map); this.moto.position.z = MOTO_Z; this.egon.raiz.add(this.moto);
+    const [mx, my, mz] = PONTOS_MOTO.manopla; const [px, py, pz] = PONTOS_MOTO.pedaleira;
+    this.egon.apoios = { mao: [mx, my, mz + MOTO_Z], pe: [px, py + 0.08, pz + MOTO_Z - 0.02], assentoY: PONTOS_MOTO.assento[1] };
+    this.pilotando = false; this.dirMoto = 1;
     this.anel = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ map: texturaAnel(), transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false }));
     this.anel.rotation.x = -Math.PI / 2; this.cena.add(this.anel);
     this.sombra = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ map: texturaSombra(), transparent: true, depthWrite: false }));
@@ -98,19 +105,58 @@ export class Palco {
 
   // ---------- API usada pelas telas ----------
   // Leva o EGon até uma âncora do layout. A base da âncora é o chão; a altura dela é a altura dele.
-  irPara(el, opc = {}) { this.ancora = el; this.opcAncora = opc; this.livre = null; this.deslocPx = 0; if (opc.instantaneo) this.calcAlvo(true); }
+  irPara(el, opc = {}) { this.ancora = el; this.opcAncora = opc; this.livre = null; this.deslocPx = 0; if (this.motoEstacionada) this.desmontarMoto(); if (opc.instantaneo) this.calcAlvo(true); }
   // Caminha alguns pixels para o lado da âncora (0 = volta ao lugar).
   passear(px) { this.deslocPx = px; }
   // Gestos espontâneos quando ninguém está interagindo. lista = null desliga.
   espontaneo(lista) { this.fidgets = lista; this.proxFidget = 3 + Math.random() * 3; }
   // Posição livre em pixels (pés), no ar: ele fica voando até voltar para uma âncora.
   voarPara(x, y, alturaPx, acao = 'voar') { this.livre = { x, y, alturaPx, acao }; if (this.voando) this.egon.setAcao(acao); }
-  acao(nome) { this.acaoBase = nome; if (!this.temp && !this.voando && !this.andando) this.egon.setAcao(nome); }
+  acao(nome) { this.acaoBase = nome; if (!this.temp && !this.voando && !this.andando && !this.pilotando) this.egon.setAcao(nome); }
   acaoVoo() { return this.livre?.acao || 'voar'; }
+  acaoAgora() { return this.pilotando ? 'pilotar' : this.voando ? this.acaoVoo() : this.andando ? 'andar' : this.acaoBase; }
+
+  // ---------- moto ----------
+  // A moto aparece estacionada ao lado (holograma), ele caminha até ela e sobe.
+  chamarMoto(ladoPx, aoMontar) {
+    const r = this.ancora?.getBoundingClientRect(); if (!r || this.pilotando) return;
+    const p = this.telaParaMundo(r.left + r.width / 2 + ladoPx, r.bottom);
+    const rot = 0.95; const esc = this.escala * ESCALA_MOTO; const off = MOTO_Z * esc;
+    this.cena.add(this.moto);
+    this.moto.position.set(p.x + Math.sin(rot) * off, p.y, Math.cos(rot) * off);
+    this.moto.rotation.set(0, rot, 0); this.moto.scale.setScalar(esc);
+    this.moto.aparecer(true); this.motoEstacionada = true; this.moto.estacionada = true;
+    this.passear(ladoPx);
+    this.aoFimCaminhada = () => { this.aoFimCaminhada = null; this.dirMoto = 1; this.egon.raiz.rotation.y = rot; this.montarMoto(); aoMontar?.(); };
+  }
+  montarMoto() {
+    if (this.pilotando) return;
+    if (this.motoEstacionada) { this.egon.raiz.add(this.moto); this.moto.position.set(0, 0, MOTO_Z); this.moto.rotation.set(0, 0, 0); this.moto.scale.setScalar(1); this.motoEstacionada = false; }
+    if (this.voando) { this.voando = false; this.livre = null; }
+    this.pilotando = true; this.andando = false; this.moto.estacionada = false; this.moto.aparecer(true);
+    this.egon.gesto('montar'); clearTimeout(this.temp); this.temp = null; this.egon.setAcao('pilotar');
+  }
+  desmontarMoto() {
+    if (!this.pilotando) return;
+    this.pilotando = false; this.motoChegada = null; this.moto.aparecer(false); this.aoFimCaminhada = null;
+    if (this.motoEstacionada) { this.egon.raiz.add(this.moto); this.moto.position.set(0, 0, MOTO_Z); this.moto.rotation.set(0, 0, 0); this.moto.scale.setScalar(1); this.motoEstacionada = false; }
+    this.egon.gesto('montar'); this.egon.setAcao(this.acaoAgora());
+  }
+  // vai de moto até uma âncora e desce sozinho ao chegar
+  irDeMoto(el, opc = {}, aoChegar) { this.irPara(el, opc); this.montarMoto(); this.motoChegada = aoChegar || (() => {}); }
+  // anda de moto até um ponto da tela, na altura do chão atual (pode sair da tela)
+  dirigirPara(xPx) {
+    const r = this.ancora?.getBoundingClientRect(); if (!r) return;
+    this.montarMoto(); this.livre = { x: xPx, y: r.bottom, alturaPx: r.height, acao: 'pilotar' };
+  }
+  teleportar(xPx) {
+    const r = this.ancora?.getBoundingClientRect(); if (!r) return;
+    const p = this.telaParaMundo(xPx, r.bottom); this.pos.x = p.x; this.pos.y = p.y; this.vel.x = 0; this.vel.y = 0;
+  }
   expressao(nome) { this.exprBase = nome; if (!this.tempExpr) this.egon.setExpressao(nome); }
   acaoTemp(nome, ms = 1600) {
     clearTimeout(this.temp); this.egon.setAcao(nome);
-    this.temp = setTimeout(() => { this.temp = null; this.egon.setAcao(this.voando ? this.acaoVoo() : this.andando ? 'andar' : this.acaoBase); }, ms);
+    this.temp = setTimeout(() => { this.temp = null; this.egon.setAcao(this.acaoAgora()); }, ms);
   }
   expressaoTemp(nome, ms = 1600) {
     clearTimeout(this.tempExpr); this.egon.setExpressao(nome);
@@ -180,7 +226,7 @@ export class Palco {
     this.combo = agora - this.ultimoToque < 900 ? this.combo + 1 : 1; this.ultimoToque = agora;
     this.aoTocar?.(this.combo, x, y);
   }
-  comecarArrasto() { this.arrastando = true; this.aoArrastar?.(); }
+  comecarArrasto() { this.desmontarMoto(); this.livre = null; this.arrastando = true; this.aoArrastar?.(); }
   soltarArrasto() { this.arrastando = false; this.aoSoltar?.(); }
 
   // ---------- quadro ----------
@@ -197,7 +243,7 @@ export class Palco {
     } else return;
     this.alturaAtualPx = alt;
     const alvo = this.telaParaMundo(px, py);
-    const escala = alt / (ALTURA_EGON * this.pxPorUnidade);
+    const escala = (alt / (ALTURA_EGON * this.pxPorUnidade)) * (this.pilotando || this.motoEstacionada ? ESCALA_MOTO : 1);
     this.alvo = { pos: alvo, escala };
     if (instantaneo) { this.pos.copy(alvo); this.escala = escala; this.vel = {}; }
   }
@@ -213,27 +259,33 @@ export class Palco {
       const limiar = 0.9 * this.escala;
       // distâncias curtas no chão: ele caminha
       const dy = Math.abs(a.pos.y - this.pos.y);
-      if (!this.voando && !this.andando && !arrastando && !this.livre && dist > limiar * 0.3 && dist < 2.4 * this.escala && dy < 0.3 * this.escala) { this.andando = true; eg.setAcao('andar'); }
+      if (!this.pilotando && !this.voando && !this.andando && !arrastando && !this.livre && dist > limiar * 0.3 && dist < 2.4 * this.escala && dy < 0.3 * this.escala) { this.andando = true; eg.setAcao('andar'); }
       if (this.andando && (dist > 2.8 * this.escala || arrastando)) this.andando = false;
-      if (this.andando && dist < 0.03 * this.escala) { this.andando = false; eg.setAcao(this.temp ? eg.acao : this.acaoBase); }
-      const tempo = arrastando ? 0.08 : this.voando ? 0.42 : this.andando ? 0.5 : 0.28;
-      const vmax = arrastando ? 200 : this.andando ? 1.5 * this.escala : 24;
+      if (this.andando && dist < 0.03 * this.escala) { this.andando = false; eg.setAcao(this.temp ? eg.acao : this.acaoBase); this.aoFimCaminhada?.(); }
+      const tempo = arrastando ? 0.08 : this.pilotando ? 1.1 : this.voando ? 0.42 : this.andando ? 0.5 : 0.28;
+      const vmax = arrastando ? 200 : this.pilotando ? 2.4 * this.escala : this.andando ? 1.5 * this.escala : 24;
       this.pos.x = amortecer(this.pos.x, a.pos.x, this.vel, 'x', tempo, dt, vmax);
       this.pos.y = amortecer(this.pos.y, a.pos.y, this.vel, 'y', tempo, dt, vmax);
       this.escala = amortecer(this.escala, a.escala, this.vel, 's', 0.35, dt);
       // voo automático quando a distância é grande
-      if (!this.voando && !this.andando && dist > limiar * 1.6 && !arrastando) { this.voando = true; clearTimeout(this.temp); this.temp = null; eg.setAcao(this.acaoVoo()); }
-      if (this.livre && !this.voando && !arrastando) { this.voando = true; eg.setAcao(this.livre.acao); }
+      if (!this.pilotando && !this.voando && !this.andando && dist > limiar * 1.6 && !arrastando) { this.voando = true; clearTimeout(this.temp); this.temp = null; eg.setAcao(this.acaoVoo()); }
+      if (this.livre && !this.voando && !arrastando && !this.pilotando) { this.voando = true; eg.setAcao(this.livre.acao); }
+      if (this.pilotando && this.motoChegada && !this.livre && dist < 0.05 * this.escala && Math.abs(this.vel.x || 0) < 0.4) { const cb = this.motoChegada; this.desmontarMoto(); cb(); }
       if (this.voando && !this.livre && dist < limiar * 0.25 && Math.hypot(this.vel.x || 0, this.vel.y || 0) < 1.2) {
         this.voando = false; eg.setAcao(this.temp ? eg.acao : this.acaoBase); eg.gesto('aterrissa'); this.aoPousar?.();
       }
       const vx = this.vel.x || 0; const vy = this.vel.y || 0;
       eg.inclVooZ = clamp(-vx * 0.035, -0.45, 0.45);
       eg.inclVooX = clamp(Math.abs(vx) * 0.02 - vy * 0.01, -0.2, 0.35);
-      const viraAlvo = (this.voando || arrastando) ? clamp(vx * 0.06, -0.9, 0.9) : this.andando && Math.abs(vx) > 0.05 ? Math.sign(vx) * 0.8 : 0;
+      if (this.pilotando && Math.abs(vx) > 0.3) this.dirMoto = Math.sign(vx);
+      const viraAlvo = this.pilotando || this.moto.visivel() ? this.dirMoto * (Math.abs(vx) > 0.3 ? 1.2 : 0.95)
+        : (this.voando || arrastando) ? clamp(vx * 0.06, -0.9, 0.9) : this.andando && Math.abs(vx) > 0.05 ? Math.sign(vx) * 0.8 : 0;
       eg.raiz.rotation.y += (viraAlvo - eg.raiz.rotation.y) * (1 - Math.exp(-5 * dt));
     }
     eg.raiz.position.copy(this.pos); eg.raiz.scale.setScalar(this.escala);
+    // chegou ao lado da moto (andando ou depois de pousar): sobe
+    if (this.aoFimCaminhada && this.motoEstacionada && !this.andando && !this.voando && !this.arrasto && this.alvo
+      && this.pos.distanceTo(this.alvo.pos) < 0.05 * this.escala && Math.hypot(this.vel.x || 0, this.vel.y || 0) < 0.3) this.aoFimCaminhada();
     this.gestosEspontaneos(dt);
 
     // para onde olhar: dedo recente > ponto pedido pela tela > pessoa em frente
@@ -249,19 +301,21 @@ export class Palco {
     }
 
     eg.atualizar(dt, this.camera);
+    this.moto.atualizar(dt, this.t, this.pilotando ? Math.abs(this.vel.x || 0) / this.escala : 0, this.camera);
 
     // sombra e anel no chão (somem quando ele sobe)
     const alturaPes = Math.max(0, eg.corpo.position.y) * this.escala;
-    const noChao = this.voando || this.livre || this.arrasto?.movendo ? 0 : 1;
+    const noChao = (this.voando || (this.livre && !this.pilotando) || this.arrasto?.movendo) ? 0 : 1;
     this.chaoAlpha = (this.chaoAlpha ?? 0) + (noChao - (this.chaoAlpha ?? 0)) * (1 - Math.exp(-6 * dt));
     const fade = clamp(1 - alturaPes / (0.9 * this.escala), 0, 1) * this.chaoAlpha;
     this.sombra.position.set(this.pos.x, this.pos.y + 0.01, 0.2 * this.escala);
-    this.sombra.scale.set(1.5 * this.escala * (0.6 + 0.4 * fade), 0.9 * this.escala * (0.6 + 0.4 * fade), 1);
+    const largura = this.moto.visivel() ? 2.6 : 1.5;
+    this.sombra.scale.set(largura * this.escala * (0.6 + 0.4 * fade), 0.9 * this.escala * (0.6 + 0.4 * fade), 1);
     this.sombra.material.opacity = 0.85 * fade;
     this.anel.position.set(this.pos.x, this.pos.y, 0);
     this.anel.scale.setScalar(1.75 * this.escala * (1 + Math.sin(this.t * 2) * 0.03));
     this.anel.rotation.z = this.t * 0.4;
-    this.anel.material.opacity = (this.opcAncora.semAnel ? 0 : 0.95) * this.chaoAlpha;
+    this.anel.material.opacity = (this.opcAncora.semAnel || this.moto.visivel() ? 0 : 0.95) * this.chaoAlpha;
 
     // luz do peito acompanha
     eg.emblema.getWorldPosition(this.luzPeito.position); this.luzPeito.position.z += 0.5 * this.escala;
@@ -302,9 +356,12 @@ export class Palco {
     const lado = this.opcAncora.balao || (p.x > this.w * 0.55 ? 'esq' : 'dir');
     const bw = b.offsetWidth; const bh = b.offsetHeight;
     let x; let y;
-    if (lado === 'cima') { x = p.x - bw / 2; y = p.y - raioPx * 1.05 - bh - 14; } else if (lado === 'esq') { x = p.x - raioPx - bw - 10; y = p.y - raioPx * 1.1 - bh * 0.35; } else { x = p.x + raioPx + 10; y = p.y - raioPx * 1.1 - bh * 0.35; }
+    let ladoFinal = lado;
+    if (lado === 'cima' && p.y - raioPx * 1.05 - bh - 14 < 10) ladoFinal = p.x > this.w * 0.5 ? 'esq' : 'dir'; // sem espaço em cima
+    if (ladoFinal !== 'cima') { const cabeEsq = p.x - raioPx - bw - 10 > 8; const cabeDir = p.x + raioPx + bw + 10 < this.w - 8; if (ladoFinal === 'esq' && !cabeEsq && cabeDir) ladoFinal = 'dir'; if (ladoFinal === 'dir' && !cabeDir && cabeEsq) ladoFinal = 'esq'; }
+    if (ladoFinal === 'cima') { x = p.x - bw / 2; y = p.y - raioPx * 1.05 - bh - 14; } else if (ladoFinal === 'esq') { x = p.x - raioPx - bw - 10; y = p.y - raioPx * 1.1 - bh * 0.35; } else { x = p.x + raioPx + 10; y = p.y - raioPx * 1.1 - bh * 0.35; }
     x = clamp(x, 16, this.w - bw - 16); y = clamp(y, 12, this.h - bh - 12);
-    b.dataset.lado = lado;
+    b.dataset.lado = ladoFinal;
     b.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   }
 }

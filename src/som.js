@@ -50,6 +50,13 @@ const SONS = {
     [262, 330, 392].forEach((f) => tom(f, t + 0.66, 0.9, { tipo: 'sine', vol: 0.12 }));
   },
   fim: (t) => { [392, 523, 659].forEach((f, i) => tom(f, t + i * 0.12, 0.35, { tipo: 'triangle', vol: 0.2 })); },
+  vrum: (t) => { // partida + acelerada da moto
+    const o = ctx.createOscillator(); const g = ctx.createGain(); const f = ctx.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(45, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.5); o.frequency.exponentialRampToValueAtTime(70, t + 1.4);
+    f.type = 'lowpass'; f.frequency.value = 900; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    o.connect(f); f.connect(g); g.connect(mestre); o.start(t); o.stop(t + 1.7);
+    ruido(t, 0.5, { vol: 0.08, de: 200, ate: 900 });
+  },
   digita: (t) => tom(1400 + Math.random() * 300, t, 0.03, { tipo: 'square', vol: 0.03 }),
 };
 
