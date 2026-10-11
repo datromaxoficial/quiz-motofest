@@ -2,7 +2,8 @@
 
 Quiz de segurança no trânsito para totem (tablet em paisagem) com captação de leads e painel online.
 
-- **Totem:** `index.html`. Tela de descanso animada com o EGon, cadastro, 5 perguntas (as 3 últimas valem chopp) e resultado.
+- **Totem:** `index.html`. Tela de descanso com o EGon em 3D, cadastro, 5 perguntas (as 3 últimas valem chopp) e resultado.
+  O EGon é montado em código (Three.js) com rosto de LED no visor: olha para onde a pessoa toca, reage a toques, cócegas, abraço (segurar) e pode ser arrastado pela tela.
 - **Painel:** `painel.html`. Métricas ao vivo, lista de participantes, Excel, resumo no WhatsApp e configurações (perguntas, limite de chopps e pausa).
 
 ## Como funciona o modo híbrido
@@ -31,9 +32,9 @@ Storage do Firebase não é usado.
 
 ## Desenvolvimento
 
-O código fica em `src/`. Para gerar `js/`:
+O código fica em `src/` (`egon3d.js` é o boneco, `palco.js` a cena 3D, `fx.js` os efeitos, `som.js` os sons). Para gerar `js/`:
 
 ```sh
-npm i firebase@11 xlsx esbuild
+npm i firebase@11 xlsx three@0.169.0 esbuild
 sh build.sh
 ```

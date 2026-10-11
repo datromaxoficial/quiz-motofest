@@ -9,156 +9,211 @@
 <title>Quiz Exclusive Gold</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icone.png">
+<link rel="preload" href="assets/fonts/archivo-latin-900-italic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/archivo-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/totem.css">
 </head>
-<body>
+<body class="carregando">
+
+<!-- Ícones -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-cerveja" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE071"/><stop offset=".55" stop-color="#FFB627"/><stop offset="1" stop-color="#E8860C"/></linearGradient>
+    <linearGradient id="g-vidro" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".25" stop-color="#fff" stop-opacity=".12"/><stop offset=".8" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></linearGradient>
+  </defs>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M4 12h15m-6-6.5L19.5 12 13 18.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-toque" viewBox="0 0 24 24"><path d="M9.5 11V5.2a1.7 1.7 0 0 1 3.4 0V10l4.6.9a2.2 2.2 0 0 1 1.8 2.5l-.8 5.1A3 3 0 0 1 15.5 21h-4.3a3 3 0 0 1-2.4-1.2l-3.6-4.8a1.6 1.6 0 0 1 2.3-2.2L9.5 14.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.4 6.6a5 5 0 0 1 9.2 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-whats" viewBox="0 0 24 24"><path d="M4.2 20l1.1-4A8.4 8.4 0 1 1 8.6 19z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8.4c.3-.6.7-.6 1-.6l.6.1 1 2.2-.6.9c.5 1 1.3 1.8 2.3 2.3l.9-.6 2.2 1 .1.6c0 .3 0 .7-.6 1-2.6 1.4-7.4-3.4-6.9-6.9z" fill="currentColor"/></symbol>
+  <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 2.8l7.5 2.8v5.8c0 4.6-3.1 8.5-7.5 9.9-4.4-1.4-7.5-5.3-7.5-9.9V5.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 12l2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chopp" viewBox="0 0 24 24"><path d="M5.5 8.5h10v10.2a2.3 2.3 0 0 1-2.3 2.3H7.8a2.3 2.3 0 0 1-2.3-2.3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15.5 10.5h1.7a2.3 2.3 0 0 1 2.3 2.3v1.4a2.3 2.3 0 0 1-2.3 2.3h-1.7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 8.6a2.6 2.6 0 0 1 2-4.2 3 3 0 0 1 5.4-.6 2.4 2.4 0 0 1 3.6 2.4 1.9 1.9 0 0 1-.4 2.4" fill="currentColor"/><path d="M9 12v5.5M12 12v5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".55"/></symbol>
+  <symbol id="i-caneca" viewBox="0 0 200 220">
+    <path d="M142 82h16a28 28 0 0 1 28 28v36a28 28 0 0 1-28 28h-16" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="15"/>
+    <rect x="28" y="52" width="116" height="152" rx="20" fill="url(#g-cerveja)"/>
+    <path d="M52 92v86M76 92v86M100 92v86M124 92v86" stroke="#fff" stroke-opacity=".22" stroke-width="7" stroke-linecap="round"/>
+    <rect x="28" y="52" width="116" height="152" rx="20" fill="url(#g-vidro)" stroke="#fff" stroke-opacity=".9" stroke-width="6"/>
+    <g fill="#fff"><circle cx="44" cy="54" r="20"/><circle cx="74" cy="42" r="24"/><circle cx="108" cy="44" r="22"/><circle cx="134" cy="56" r="17"/><circle cx="60" cy="62" r="16"/><circle cx="118" cy="64" r="14"/></g>
+  </symbol>
+</svg>
+
+<!-- Fundo -->
 <div id="fundo" aria-hidden="true">
-  <div class="brilho b1"></div><div class="brilho b2"></div>
-  <div class="estrada"><div class="faixas"></div></div>
+  <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+  <div class="horizonte"></div>
+  <canvas id="fx-fundo"></canvas>
+  <div class="vinheta"></div>
+  <div class="grao"></div>
 </div>
 
 <!-- TELA DE DESCANSO -->
 <section id="tela-descanso" class="tela ativa" aria-label="Toque para jogar">
-  <img class="logo-topo" src="assets/logo-branco.svg" alt="Exclusive Gold">
-  <div class="descanso-palco">
-    <div class="descanso-texto">
-      <p class="selo">Quiz da Segurança no Trânsito</p>
-      <h1 id="frase-descanso">Acerte e ganhe um <span class="ouro">chopp gelado</span></h1>
-      <p id="sub-descanso" class="sub">5 perguntas rápidas. As 3 últimas valem chopp!</p>
-      <div class="cta"><span class="cta-dedo">👆</span> Toque na tela para jogar</div>
+  <header class="topo e" style="--i:0">
+    <img class="logo logo-secreto" src="assets/logo-branco.svg" alt="Exclusive Gold">
+    <div class="chip-evento"><span class="ao-vivo"></span>Motofest</div>
+  </header>
+  <div class="descanso-texto">
+    <p class="selo e" style="--i:1"><svg><use href="#i-escudo"/></svg>Quiz da segurança no trânsito</p>
+    <h1 id="frase-descanso" class="manchete"></h1>
+    <p id="sub-descanso" class="sub e" style="--i:3"></p>
+    <div class="cta e" id="cta" style="--i:4">
+      <span class="cta-luz"></span>
+      <span class="cta-icone"><svg><use href="#i-toque"/></svg></span>
+      <span class="cta-texto">Toque para jogar</span>
     </div>
-    <div class="egon-area">
-      <div class="balao" id="balao-descanso">Bora testar seus conhecimentos?</div>
-      <div class="egon" id="egon-descanso"><img src="assets/egon/xau.webp" alt=""></div>
-      <div class="sombra"></div>
-    </div>
+    <ol class="passos e" style="--i:5">
+      <li><b>1</b><span>Cadastro<br>rapidinho</span></li>
+      <li><b>2</b><span>5 perguntas<br>de trânsito</span></li>
+      <li class="passo-ouro"><b><svg><use href="#i-chopp"/></svg></b><span>Acertou as 3 finais?<br>Chopp na mão!</span></li>
+    </ol>
   </div>
+  <div class="ancora" id="ancora-descanso"></div>
+  <p class="dica-egon e" style="--i:6"><svg><use href="#i-toque"/></svg>Toque, segure ou arraste o EGon</p>
 </section>
 
 <!-- CADASTRO -->
 <section id="tela-cadastro" class="tela" aria-label="Cadastro">
-  <header class="barra">
-    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-barra">
-    <button class="btn-voltar" data-acao="inicio">✕ Cancelar</button>
+  <header class="topo e" style="--i:0">
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo logo-secreto">
+    <ol class="etapas"><li class="atual"><b>1</b>Seus dados</li><li><b>2</b>Quiz</li><li><b><svg><use href="#i-chopp"/></svg></b>Chopp</li></ol>
+    <button class="btn-voltar" data-acao="inicio"><svg><use href="#i-fechar"/></svg>Cancelar</button>
   </header>
-  <div class="cadastro-grid">
-    <div class="egon-lateral">
-      <div class="balao balao-esq">Antes, me conta quem é você!</div>
-      <div class="egon"><img src="assets/egon/apontando.webp" alt=""></div>
-      <div class="sombra"></div>
+  <div class="ancora" id="ancora-cadastro"></div>
+  <form id="form" class="cartao e" style="--i:1" novalidate autocomplete="off">
+    <div class="cartao-topo">
+      <h2>Quem vai jogar?</h2>
+      <div class="medidor" id="medidor" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     </div>
-    <form id="form" class="cartao" novalidate autocomplete="off">
-      <h2>Seus dados</h2>
-      <label class="campo campo-largo">
-        <span>Nome completo</span>
-        <input id="f-nome" name="nome" type="text" autocapitalize="words" enterkeyhint="next" placeholder="Seu nome">
+    <label class="campo" data-campo="nome">
+      <span class="campo-icone"><svg><use href="#i-user"/></svg></span>
+      <input id="f-nome" name="nome" type="text" autocapitalize="words" enterkeyhint="next" placeholder=" ">
+      <span class="campo-rotulo">Nome completo</span>
+      <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
+    </label>
+    <div class="linha">
+      <label class="campo" data-campo="whats">
+        <span class="campo-icone"><svg><use href="#i-whats"/></svg></span>
+        <input id="f-whats" name="whatsapp" type="tel" inputmode="numeric" enterkeyhint="next" placeholder=" ">
+        <span class="campo-rotulo">WhatsApp com DDD</span>
+        <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
       </label>
-      <div class="linha">
-        <label class="campo">
-          <span>WhatsApp</span>
-          <input id="f-whats" name="whatsapp" type="tel" inputmode="numeric" enterkeyhint="next" placeholder="(00) 00000-0000">
-        </label>
-        <label class="campo">
-          <span>Placa do veículo / moto</span>
-          <input id="f-placa" name="placa" type="text" autocapitalize="characters" enterkeyhint="done" maxlength="8" placeholder="ABC1D23">
-        </label>
+      <label class="campo campo-placa" data-campo="placa">
+        <span class="placa-faixa"><i></i>BRASIL<i></i></span>
+        <input id="f-placa" name="placa" type="text" autocapitalize="characters" enterkeyhint="done" maxlength="8" placeholder="ABC1D23">
+        <span class="campo-rotulo">Placa da moto</span>
+        <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
+      </label>
+    </div>
+    <div class="campo-assoc" data-campo="assoc">
+      <span class="assoc-pergunta">Você já é associado Exclusive Gold?</span>
+      <div class="escolha" id="f-assoc" role="radiogroup">
+        <span class="escolha-pilula"></span>
+        <button type="button" data-v="sim" role="radio" aria-checked="false">Sim, sou!</button>
+        <button type="button" data-v="nao" role="radio" aria-checked="false">Ainda não</button>
       </div>
-      <div class="campo">
-        <span>Você é associado Exclusive Gold?</span>
-        <div class="escolha" id="f-assoc" role="radiogroup">
-          <button type="button" data-v="sim" role="radio" aria-checked="false">Sim</button>
-          <button type="button" data-v="nao" role="radio" aria-checked="false">Não</button>
-        </div>
-      </div>
-      <p class="erro" id="form-erro" role="alert"></p>
-      <button type="submit" class="btn-principal">Começar o quiz →</button>
+    </div>
+    <div class="cartao-pe">
       <label class="lgpd">
-        <input type="checkbox" id="f-lgpd" checked>
-        <span>Autorizo a Exclusive Gold a usar meus dados para contato, conforme a LGPD.</span>
+        <input type="checkbox" id="f-lgpd">
+        <span class="lgpd-caixa"><svg><use href="#i-check"/></svg></span>
+        <span>Autorizo a Exclusive Gold a guardar meus dados e falar comigo pelo WhatsApp, conforme a LGPD. <b>Obrigatório para participar.</b></span>
       </label>
-    </form>
-  </div>
+      <button type="submit" class="btn-principal" id="btn-comecar"><span id="btn-comecar-txt">Começar</span><svg><use href="#i-seta"/></svg></button>
+    </div>
+  </form>
 </section>
 
 <!-- QUIZ -->
 <section id="tela-quiz" class="tela" aria-label="Quiz">
-  <header class="barra">
-    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-barra">
+  <header class="topo e" style="--i:0">
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo logo-secreto">
     <ol class="progresso" id="progresso"></ol>
-    <button class="btn-voltar" data-acao="inicio">✕ Sair</button>
+    <button class="btn-voltar" data-acao="inicio"><svg><use href="#i-fechar"/></svg>Sair</button>
   </header>
-  <div class="quiz-grid">
-    <div class="pergunta-area">
-      <div class="pergunta-topo">
-        <span class="num" id="q-num">Pergunta 1 de 5</span>
-        <span class="tag-chopp" id="q-chopp">🍺 Valendo chopp</span>
-      </div>
-      <h2 id="q-texto"></h2>
-      <div class="opcoes" id="q-opcoes"></div>
-      <p class="feedback" id="q-feedback" aria-live="polite"></p>
+  <div class="pergunta-area" id="pergunta-area">
+    <div class="pergunta-topo e" style="--i:1">
+      <span class="q-num"><b id="q-num">01</b><small id="q-de">/05</small></span>
+      <span class="q-tag" id="q-tag">Trânsito</span>
+      <span class="tag-chopp" id="q-chopp"><svg><use href="#i-chopp"/></svg>Valendo chopp</span>
     </div>
-    <div class="egon-lateral">
-      <div class="balao balao-esq" id="balao-quiz">Pensa bem...</div>
-      <div class="egon" id="egon-quiz"><img src="assets/egon/pensando.webp" alt=""></div>
-      <div class="sombra"></div>
-    </div>
+    <h2 id="q-texto" class="q-texto"></h2>
+    <div class="opcoes" id="q-opcoes"></div>
   </div>
+  <div class="ancora" id="ancora-quiz"></div>
   <div class="aviso-chopp" id="aviso-chopp" aria-hidden="true">
-    <div class="caneca">🍺</div>
-    <p>Agora vale <span class="ouro">chopp!</span></p>
-    <small>Acerte as próximas 3 perguntas</small>
+    <div class="raios"></div>
+    <div class="aviso-conteudo">
+      <p class="aviso-sobre">Últimas <span id="aviso-qtd">3</span> perguntas</p>
+      <p class="aviso-titulo"><span>Agora</span> <span>vale</span> <span class="ouro">chopp!</span></p>
+      <small id="aviso-sub">Acerte todas e o chopp é seu</small>
+    </div>
+    <div class="ancora" id="ancora-aviso"></div>
   </div>
 </section>
 
 <!-- RESULTADO -->
 <section id="tela-resultado" class="tela" aria-label="Resultado">
-  <canvas id="confete"></canvas>
-  <div class="resultado-grid">
-    <div class="egon-area">
-      <div class="egon" id="egon-res"><img src="assets/egon/comemorando.webp" alt=""></div>
-      <div class="sombra"></div>
-    </div>
-    <div class="resultado-texto">
-      <p class="placar"><span id="r-acertos">5</span><small> de <span id="r-total">5</span></small></p>
-      <h1 id="r-titulo">Parabéns!</h1>
-      <p id="r-msg" class="sub"></p>
-      <div class="premio" id="r-premio">
-        <span class="caneca grande">🍺</span>
-        <div><strong>Você ganhou um chopp!</strong><br>Mostre esta tela no balcão do estande.</div>
+  <div class="holofote" aria-hidden="true"></div>
+  <div class="ancora" id="ancora-resultado"></div>
+  <div class="resultado-texto">
+    <p class="placar e" style="--i:0"><span id="r-acertos">5</span><small>de <span id="r-total">5</span><br>acertos</small></p>
+    <h1 id="r-titulo" class="e" style="--i:1">Parabéns!</h1>
+    <p id="r-msg" class="sub e" style="--i:2"></p>
+    <div class="voucher e" id="r-premio" style="--i:3">
+      <div class="voucher-luz"></div>
+      <svg class="voucher-caneca"><use href="#i-caneca"/></svg>
+      <div class="voucher-info">
+        <small>Vale 1 chopp</small>
+        <strong id="r-voucher-nome">Fulano</strong>
+        <span>Mostre esta tela no balcão do estande</span>
       </div>
-      <button class="btn-principal" data-acao="inicio">Finalizar</button>
-      <p class="volta">Voltando ao início em <span id="r-contagem">20</span>s</p>
+      <div class="voucher-canhoto"><small>Código</small><b id="r-voucher-codigo">ABCD</b><small id="r-voucher-hora">00:00</small></div>
+    </div>
+    <div class="resultado-acoes e" style="--i:4">
+      <button class="btn-principal" data-acao="inicio">Finalizar<svg><use href="#i-check"/></svg></button>
+      <div class="volta">
+        <svg class="anel" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle id="r-anel" cx="20" cy="20" r="17"/></svg>
+        <b id="r-contagem">20</b>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- PAUSADO -->
 <section id="tela-pausa" class="tela" aria-label="Pausado">
-  <div class="pausa">
-    <div class="egon"><img src="assets/egon/pensando.webp" alt=""></div>
-    <h1>Já voltamos!</h1>
-    <p class="sub">O quiz está em pausa por alguns instantes.</p>
-    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-pausa">
+  <div class="ancora" id="ancora-pausa"></div>
+  <div class="pausa-texto">
+    <h1 class="e" style="--i:0">Já voltamos!</h1>
+    <p class="sub e" style="--i:1">O EGon está tirando um cochilo rapidinho.</p>
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo logo-pausa logo-secreto e" style="--i:2">
   </div>
 </section>
+
+<!-- EGon 3D, balão e efeitos ficam por cima das telas -->
+<canvas id="palco" aria-hidden="true"></canvas>
+<div id="balao" class="balao" aria-live="polite"><span></span></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="cortina" aria-hidden="true"></div>
 
 <!-- MODAL -->
 <div class="modal" id="modal" role="dialog" aria-modal="true" hidden>
   <div class="modal-caixa">
-    <img src="assets/egon/like.webp" alt="" class="modal-egon">
     <h3 id="modal-titulo">Você já jogou!</h3>
     <p id="modal-texto">Pode jogar de novo. Boa sorte nessa rodada!</p>
-    <button class="btn-principal" id="modal-ok">Bora jogar</button>
+    <button class="btn-principal" id="modal-ok">Bora jogar<svg><use href="#i-seta"/></svg></button>
   </div>
 </div>
 
-<!-- STATUS (toque 5x no logo do topo) -->
+<!-- STATUS (toque 5x no logo) -->
 <div class="status" id="status" hidden>
   <div class="status-caixa">
     <h3>Status do totem</h3>
     <dl id="status-lista"></dl>
     <div class="status-acoes">
       <button id="st-sync">Reenviar pendentes</button>
+      <button id="st-som">Som: ligado</button>
       <button id="st-reload">Recarregar</button>
       <button id="st-sair">Sair da tela cheia</button>
       <button id="st-fechar" class="primario">Fechar</button>

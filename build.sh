@@ -1,5 +1,5 @@
 #!/bin/sh
-# Gera js/totem.js e js/painel.js a partir de src/ (precisa de: npm i firebase@11 xlsx esbuild)
+# Gera js/totem.js e js/painel.js a partir de src/ (precisa de: npm i firebase@11 xlsx three@0.169.0 esbuild)
 set -e
 cd "$(dirname "$0")"
 NODE_PATH=${NODE_PATH:-node_modules}

@@ -1,13 +1,11 @@
 // Cache offline do totem: depois da primeira abertura com internet, o quiz abre sem rede.
-const VERSAO = 'v20261011150511';
+const VERSAO = 'v20261011140622';
 const ARQUIVOS = [
   './', './index.html', './config.js', './manifest.json', './css/totem.css', './js/totem.js',
   './assets/logo-branco.svg', './assets/icone.png',
   './assets/fonts/archivo-latin-500-normal.woff2', './assets/fonts/archivo-latin-700-normal.woff2',
   './assets/fonts/archivo-latin-800-normal.woff2', './assets/fonts/archivo-latin-900-normal.woff2',
   './assets/fonts/archivo-latin-800-italic.woff2', './assets/fonts/archivo-latin-900-italic.woff2',
-  ...['xau', 'xau_animado', 'apontando', 'pensando', 'encantamento', 'comemorando', 'duvida', 'super', 'like']
-    .map((n) => `./assets/egon/${n}.webp`),
 ];
 
 self.addEventListener('install', (e) => {

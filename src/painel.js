@@ -1,7 +1,7 @@
 import { utils, writeFile } from 'xlsx';
 import {
-  modoDemo, DEFAULT_CONFIG, observarConfig, salvarConfig, observarStats, zerarChopps,
-  observarLeads, observarLogin, entrar, sair,
+  modoDemo, DEFAULT_CONFIG, aplicarRegraChopp, observarConfig, salvarConfig, observarStats, zerarChopps,
+  observarLeads, observarLogin, entrar, sair, marcarEntregue,
 } from './data.js';
 
 const $ = (s) => document.querySelector(s);
@@ -42,10 +42,11 @@ function metricas() {
   const total = leads.length;
   const unicos = new Set(leads.map((l) => l.whatsapp)).size;
   const chopps = leads.filter((l) => l.ganhouChopp).length;
+  const entregues = leads.filter((l) => l.ganhouChopp && l.entregue).length;
   const assoc = leads.filter((l) => l.associado).length;
   const resp = leads.flatMap((l) => l.respostas || []);
   const acertos = resp.filter((r) => r.acertou).length;
-  return { total, unicos, chopps, assoc, acertoMedio: pct(acertos, resp.length) };
+  return { total, unicos, chopps, entregues, pendentes: chopps - entregues, assoc, naoAssoc: total - assoc, acertoMedio: pct(acertos, resp.length) };
 }
 
 function render() {
@@ -59,7 +60,9 @@ function render() {
   $('#k-estoque').textContent = limite ? `de ${limite} · restam ${Math.max(limite - entregues, 0)}` : 'sem limite';
   $('#k-barra').style.width = limite ? `${Math.min(pct(entregues, limite), 100)}%` : '0';
   $('#k-assoc').textContent = `${pct(m.assoc, m.total)}%`;
-  $('#k-assoc-n').textContent = `${m.assoc} de ${m.total}`;
+  $('#k-assoc-n').textContent = `${m.assoc} associados · ${m.naoAssoc} não`;
+  $('#k-entregues').textContent = m.entregues;
+  $('#k-pendentes').textContent = m.pendentes ? `${m.pendentes} ${m.pendentes === 1 ? 'cupom aguardando' : 'cupons aguardando'} no balcão` : 'nenhum cupom pendente';
   $('#k-acerto').textContent = `${m.acertoMedio}%`;
   $('#c-ganhos').textContent = entregues;
   graficoPerguntas(); graficoHoras(); tabela();
@@ -99,11 +102,12 @@ function filtrados() {
   const f = $('#filtro').value;
   return leads.filter((l) => {
     if (f === 'chopp' && !l.ganhouChopp) return false;
+    if (f === 'pendente' && !(l.ganhouChopp && !l.entregue)) return false;
     if (f === 'assoc' && !l.associado) return false;
     if (f === 'nao-assoc' && l.associado) return false;
     if (!q) return true;
     const qd = q.replace(/\D/g, '');
-    return [l.nome, l.placa].some((v) => String(v || '').toLowerCase().includes(q))
+    return [l.nome, l.placa, l.codigo].some((v) => String(v || '').toLowerCase().includes(q))
       || (qd.length >= 3 && String(l.whatsapp || '').includes(qd));
   }).sort((a, b) => b.clientTime - a.clientTime);
 }
@@ -119,10 +123,22 @@ function tabela() {
       <td>${esc(l.placa)}</td>
       <td>${l.associado ? '<span class="tag sim">Sim</span>' : 'Não'}</td>
       <td>${l.acertos}/${l.total || (l.respostas || []).length}</td>
-      <td>${l.ganhouChopp ? '<span class="tag chopp">🍺 Ganhou</span>' : l.choppEsgotado ? 'Acertou (esgotado)' : '-'}</td>
+      <td>${l.ganhouChopp ? `<span class="tag chopp">🍺 Ganhou</span>${l.codigo ? `<span class="cupom">${esc(l.codigo)}</span>` : ''}` : l.choppEsgotado ? 'Acertou (esgotado)' : '-'}</td>
+      <td>${l.ganhouChopp ? (l.entregue
+    ? `<button class="tag sim entregue" data-entregar="${esc(l.id)}" data-v="0" title="Toque para desfazer">✓ Entregue ${l.entregueEm ? new Date(l.entregueEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</button>`
+    : `<button class="btn primario mini" data-entregar="${esc(l.id)}" data-v="1">Entregar</button>`) : ''}</td>
     </tr>`;
   }).join('');
 }
+
+$('#tabela').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-entregar]'); if (!b) return;
+  const sim = b.dataset.v === '1';
+  const l = leads.find((x) => x.id === b.dataset.entregar);
+  if (!sim && !confirm(`Desfazer a entrega do chopp de ${l?.nome || 'participante'}?`)) return;
+  b.disabled = true;
+  try { await marcarEntregue(b.dataset.entregar, sim); toast(sim ? 'Chopp marcado como entregue.' : 'Entrega desfeita.'); } catch { b.disabled = false; toast('Não foi possível salvar. Verifique a conexão.'); }
+});
 
 // ---------- Excel ----------
 function exportar() {
@@ -135,6 +151,9 @@ function exportar() {
       'Associado EG': l.associado ? 'Sim' : 'Não', Placa: l.placa,
       Acertos: `${l.acertos}/${l.total || (l.respostas || []).length}`,
       'Ganhou chopp': l.ganhouChopp ? 'Sim' : l.choppEsgotado ? 'Acertou (esgotado)' : 'Não',
+      'Código do cupom': l.codigo || '',
+      'Chopp entregue': l.ganhouChopp ? (l.entregue ? 'Sim' : 'Não') : '',
+      'Entregue em': l.entregue && l.entregueEm ? new Date(l.entregueEm).toLocaleString('pt-BR') : '',
       'Jogou de novo': l.repetido ? 'Sim' : 'Não',
       'Aceite LGPD': l.lgpd ? 'Sim' : 'Não',
     };
@@ -151,7 +170,8 @@ function exportar() {
   const resumo = utils.aoa_to_sheet([
     ['Quiz Exclusive Gold · Motofest'], [],
     ['Participações', m.total], ['Pessoas diferentes', m.unicos], ['Chopps ganhos', stats.chopps],
-    ['Associados EG', `${m.assoc} (${pct(m.assoc, m.total)}%)`], ['Acerto médio', `${m.acertoMedio}%`], [],
+    ['Chopps entregues', m.entregues], ['Cupons aguardando entrega', m.pendentes],
+    ['Associados EG', `${m.assoc} (${pct(m.assoc, m.total)}%)`], ['Não associados', m.naoAssoc], ['Acerto médio', `${m.acertoMedio}%`], [],
     ['Pergunta', 'Acertos'],
     ...ps.map((p, i) => {
       const rs = leads.map((l) => (l.respostas || []).find((r) => r.pergunta === i + 1)).filter(Boolean);
@@ -173,6 +193,7 @@ $('#btn-resumo').addEventListener('click', () => {
     '*Quiz Exclusive Gold · Motofest*',
     `Participações: ${m.total} (${m.unicos} pessoas)`,
     `Chopps ganhos: ${stats.chopps}${Number(config.limiteChopps) ? ` de ${config.limiteChopps}` : ''}`,
+    `Chopps entregues: ${m.entregues} (aguardando: ${m.pendentes})`,
     `Associados EG: ${m.assoc} (${pct(m.assoc, m.total)}%)`,
     `Não associados: ${m.total - m.assoc}`,
     `Acerto médio: ${m.acertoMedio}%`,
@@ -187,6 +208,7 @@ const clonar = (o) => JSON.parse(JSON.stringify(o));
 function carregarRascunho() {
   rascunho = clonar(config);
   $('#c-pausado').checked = !!rascunho.pausado;
+  $('#c-som').checked = rascunho.som !== false;
   $('#c-limite').value = rascunho.limiteChopps ?? 0;
   renderPerguntas();
   marcar(false);
@@ -199,7 +221,7 @@ function renderPerguntas() {
     <div class="pergunta ${p.valeChopp ? 'vale' : ''}" data-i="${i}">
       <div class="p-topo">
         <b>Pergunta ${i + 1}</b>
-        <label><input type="checkbox" data-campo="valeChopp" ${p.valeChopp ? 'checked' : ''}> 🍺 Vale chopp</label>
+        ${p.valeChopp ? '<span class="tag chopp">🍺 Vale chopp</span>' : '<span class="tag">Aquecimento</span>'}
         <button class="link" data-remover>Remover</button>
       </div>
       <textarea data-campo="texto" rows="2">${esc(p.texto)}</textarea>
@@ -223,7 +245,6 @@ $('#c-perguntas').addEventListener('input', (e) => {
 $('#c-perguntas').addEventListener('change', (e) => {
   const card = e.target.closest('.pergunta'); if (!card) return;
   const p = rascunho.perguntas[+card.dataset.i];
-  if (e.target.dataset.campo === 'valeChopp') { p.valeChopp = e.target.checked; card.classList.toggle('vale', p.valeChopp); }
   if (e.target.dataset.certa) p.correta = +e.target.dataset.certa;
   marcar(true);
 });
@@ -234,6 +255,7 @@ $('#c-perguntas').addEventListener('click', (e) => {
     if (rascunho.perguntas.length <= 1) return toast('O quiz precisa de pelo menos 1 pergunta.');
     if (!confirm(`Remover a pergunta ${i + 1}?`)) return;
     rascunho.perguntas.splice(i, 1);
+    rascunho.perguntas = aplicarRegraChopp(rascunho.perguntas);
   } else if (e.target.dataset.tirar) {
     const k = +e.target.dataset.tirar; p.opcoes.splice(k, 1);
     if (p.correta === k) p.correta = 0; else if (p.correta > k) p.correta -= 1;
@@ -243,7 +265,7 @@ $('#c-perguntas').addEventListener('click', (e) => {
   renderPerguntas(); marcar(true);
 });
 $('#c-add').addEventListener('click', () => {
-  rascunho.perguntas.push({ tag: '', texto: '', opcoes: ['', '', ''], correta: 0, valeChopp: false });
+  rascunho.perguntas = aplicarRegraChopp([...rascunho.perguntas, { tag: '', texto: '', opcoes: ['', '', ''], correta: 0 }]);
   renderPerguntas(); marcar(true);
 });
 $('#c-limite').addEventListener('input', () => { rascunho.limiteChopps = Math.max(0, parseInt($('#c-limite').value, 10) || 0); marcar(true); });
@@ -261,13 +283,23 @@ $('#c-pausado').addEventListener('change', async (e) => {
   } catch { e.target.checked = !e.target.checked; toast('Não foi possível alterar. Verifique a conexão.'); }
 });
 
+// Som do totem também vale na hora.
+$('#c-som').addEventListener('change', async (e) => {
+  try {
+    await salvarConfig({ ...config, som: e.target.checked });
+    rascunho.som = e.target.checked;
+    toast(e.target.checked ? 'Sons do totem ligados.' : 'Sons do totem desligados.');
+  } catch { e.target.checked = !e.target.checked; toast('Não foi possível alterar. Verifique a conexão.'); }
+});
+
 $('#c-salvar').addEventListener('click', async () => {
   const ps = rascunho.perguntas;
   const ruim = ps.findIndex((p) => !p.texto.trim() || p.opcoes.some((o) => !o.trim()));
   if (ruim >= 0) return toast(`Preencha o texto e todas as opções da pergunta ${ruim + 1}.`);
   ps.forEach((p) => { p.texto = p.texto.trim(); p.opcoes = p.opcoes.map((o) => o.trim()); });
+  rascunho.perguntas = aplicarRegraChopp(ps);
   try {
-    await salvarConfig({ ...rascunho, pausado: config.pausado });
+    await salvarConfig({ ...rascunho, pausado: config.pausado, som: config.som });
     marcar(false); toast('Configurações salvas. O totem já está usando.');
   } catch { toast('Não foi possível salvar. Verifique a conexão.'); }
 });

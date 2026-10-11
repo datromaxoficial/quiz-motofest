@@ -45,6 +45,7 @@
       <div class="kpis">
         <div class="kpi"><span>Participações</span><strong id="k-total">0</strong><small id="k-unicos">0 pessoas</small></div>
         <div class="kpi ouro"><span>Chopps ganhos</span><strong id="k-chopps">0</strong><small id="k-estoque">sem limite</small><div class="barra"><i id="k-barra"></i></div></div>
+        <div class="kpi"><span>Chopps entregues</span><strong id="k-entregues">0</strong><small id="k-pendentes">nenhum cupom pendente</small></div>
         <div class="kpi"><span>Associados EG</span><strong id="k-assoc">0%</strong><small id="k-assoc-n">0 de 0</small></div>
         <div class="kpi"><span>Acerto médio</span><strong id="k-acerto">0%</strong><small id="k-acerto-n">das respostas</small></div>
       </div>
@@ -63,10 +64,11 @@
     <!-- PARTICIPANTES -->
     <div class="aba" id="aba-participantes" hidden>
       <div class="acoes">
-        <input type="search" id="busca" placeholder="Buscar por nome, WhatsApp ou placa">
+        <input type="search" id="busca" placeholder="Buscar por nome, WhatsApp, placa ou cupom">
         <select id="filtro">
           <option value="">Todos</option>
           <option value="chopp">Ganharam chopp</option>
+          <option value="pendente">Chopp a entregar</option>
           <option value="assoc">Associados</option>
           <option value="nao-assoc">Não associados</option>
         </select>
@@ -74,7 +76,7 @@
       </div>
       <div class="cartao tabela-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Placa</th><th>Associado</th><th>Acertos</th><th>Chopp</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Placa</th><th>Associado</th><th>Acertos</th><th>Chopp</th><th>Entrega</th></tr></thead>
           <tbody id="tabela"></tbody>
         </table>
         <p class="vazio" id="vazio" hidden>Nenhuma participação ainda.</p>
@@ -91,6 +93,11 @@
             <span class="trilho"><i></i></span>
             <span><strong>Pausar o quiz</strong><br><small>O totem mostra "Já voltamos!" até você reativar.</small></span>
           </label>
+          <label class="chave">
+            <input type="checkbox" id="c-som">
+            <span class="trilho"><i></i></span>
+            <span><strong>Sons no totem</strong><br><small>Efeitos sonoros do quiz. Vale na hora.</small></span>
+          </label>
           <label class="campo">Limite de chopps <small>(0 = sem limite)</small>
             <input type="number" id="c-limite" min="0" step="1">
           </label>
@@ -98,7 +105,7 @@
         </div>
         <div class="cartao">
           <h2>Perguntas</h2>
-          <p class="info">Marque a resposta certa e quais perguntas valem chopp. Para ganhar, a pessoa precisa acertar todas as que valem chopp.</p>
+          <p class="info">Marque a resposta certa de cada pergunta. <strong>Regra do chopp:</strong> as 3 últimas perguntas valem chopp, e para ganhar a pessoa precisa acertar as 3. As primeiras são de aquecimento e não contam para o prêmio.</p>
           <div id="c-perguntas"></div>
           <button class="btn" id="c-add">+ Adicionar pergunta</button>
         </div>

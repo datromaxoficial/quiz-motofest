@@ -5,12 +5,13 @@
 import { initializeApp } from 'firebase/app';
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  doc, setDoc, onSnapshot, collection, query, orderBy, increment, serverTimestamp,
+  doc, setDoc, updateDoc, onSnapshot, collection, query, orderBy, increment, serverTimestamp,
 } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 
 export const DEFAULT_CONFIG = {
   pausado: false,
+  som: true,
   limiteChopps: 0,
   perguntas: [
     {
@@ -67,7 +68,13 @@ const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } c
 export const uid = () =>
   (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-const mesclarConfig = (c) => ({ ...DEFAULT_CONFIG, ...(c || {}), perguntas: (c && c.perguntas && c.perguntas.length) ? c.perguntas : DEFAULT_CONFIG.perguntas });
+// Regra do chopp: valem chopp sempre as 3 últimas perguntas, e para ganhar é preciso acertar as 3.
+export const PERGUNTAS_CHOPP = 3;
+export const aplicarRegraChopp = (ps) => ps.map((p, i) => ({ ...p, valeChopp: i >= ps.length - PERGUNTAS_CHOPP }));
+const mesclarConfig = (c) => ({
+  ...DEFAULT_CONFIG, ...(c || {}),
+  perguntas: aplicarRegraChopp((c && c.perguntas && c.perguntas.length) ? c.perguntas : DEFAULT_CONFIG.perguntas),
+});
 
 // Avisa ouvintes da mesma página e de outras abas (modo demo).
 const ouvintes = new Set();
@@ -156,6 +163,15 @@ export function reenviarPendentes() {
       .then(() => marcarSincronizado(l.id))
       .catch(() => {});
   });
+}
+
+// Balcão: marca (ou desmarca) que o chopp do cupom já foi entregue.
+export async function marcarEntregue(id, entregue) {
+  const dados = { entregue, entregueEm: entregue ? Date.now() : null };
+  const ls = leadsLocais(); const l = ls.find((x) => x.id === id);
+  if (l) { Object.assign(l, dados); gravar(LS.leads, ls); }
+  if (modoDemo) { avisar(); return; }
+  await updateDoc(doc(db, 'leads', id), dados);
 }
 
 export function observarLeads(cb) {
