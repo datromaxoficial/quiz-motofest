@@ -1,0 +1,13 @@
+{
+  "name": "Quiz Exclusive Gold",
+  "short_name": "Quiz EG",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#020B1F",
+  "theme_color": "#020B1F",
+  "icons": [
+    { "src": "assets/icone.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

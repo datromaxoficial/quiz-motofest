@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020B1F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Quiz Exclusive Gold</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icone.png">
+<link rel="stylesheet" href="css/totem.css">
+</head>
+<body>
+<div id="fundo" aria-hidden="true">
+  <div class="brilho b1"></div><div class="brilho b2"></div>
+  <div class="estrada"><div class="faixas"></div></div>
+</div>
+
+<!-- TELA DE DESCANSO -->
+<section id="tela-descanso" class="tela ativa" aria-label="Toque para jogar">
+  <img class="logo-topo" src="assets/logo-branco.svg" alt="Exclusive Gold">
+  <div class="descanso-palco">
+    <div class="descanso-texto">
+      <p class="selo">Quiz da Segurança no Trânsito</p>
+      <h1 id="frase-descanso">Acerte e ganhe um <span class="ouro">chopp gelado</span></h1>
+      <p id="sub-descanso" class="sub">5 perguntas rápidas. As 3 últimas valem chopp!</p>
+      <div class="cta"><span class="cta-dedo">👆</span> Toque na tela para jogar</div>
+    </div>
+    <div class="egon-area">
+      <div class="balao" id="balao-descanso">Bora testar seus conhecimentos?</div>
+      <div class="egon" id="egon-descanso"><img src="assets/egon/xau.webp" alt=""></div>
+      <div class="sombra"></div>
+    </div>
+  </div>
+</section>
+
+<!-- CADASTRO -->
+<section id="tela-cadastro" class="tela" aria-label="Cadastro">
+  <header class="barra">
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-barra">
+    <button class="btn-voltar" data-acao="inicio">✕ Cancelar</button>
+  </header>
+  <div class="cadastro-grid">
+    <div class="egon-lateral">
+      <div class="balao balao-esq">Antes, me conta quem é você!</div>
+      <div class="egon"><img src="assets/egon/apontando.webp" alt=""></div>
+      <div class="sombra"></div>
+    </div>
+    <form id="form" class="cartao" novalidate autocomplete="off">
+      <h2>Seus dados</h2>
+      <label class="campo campo-largo">
+        <span>Nome completo</span>
+        <input id="f-nome" name="nome" type="text" autocapitalize="words" enterkeyhint="next" placeholder="Seu nome">
+      </label>
+      <div class="linha">
+        <label class="campo">
+          <span>WhatsApp</span>
+          <input id="f-whats" name="whatsapp" type="tel" inputmode="numeric" enterkeyhint="next" placeholder="(00) 00000-0000">
+        </label>
+        <label class="campo">
+          <span>Placa do veículo / moto</span>
+          <input id="f-placa" name="placa" type="text" autocapitalize="characters" enterkeyhint="done" maxlength="8" placeholder="ABC1D23">
+        </label>
+      </div>
+      <div class="campo">
+        <span>Você é associado Exclusive Gold?</span>
+        <div class="escolha" id="f-assoc" role="radiogroup">
+          <button type="button" data-v="sim" role="radio" aria-checked="false">Sim</button>
+          <button type="button" data-v="nao" role="radio" aria-checked="false">Não</button>
+        </div>
+      </div>
+      <p class="erro" id="form-erro" role="alert"></p>
+      <button type="submit" class="btn-principal">Começar o quiz →</button>
+      <label class="lgpd">
+        <input type="checkbox" id="f-lgpd" checked>
+        <span>Autorizo a Exclusive Gold a usar meus dados para contato, conforme a LGPD.</span>
+      </label>
+    </form>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section id="tela-quiz" class="tela" aria-label="Quiz">
+  <header class="barra">
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-barra">
+    <ol class="progresso" id="progresso"></ol>
+    <button class="btn-voltar" data-acao="inicio">✕ Sair</button>
+  </header>
+  <div class="quiz-grid">
+    <div class="pergunta-area">
+      <div class="pergunta-topo">
+        <span class="num" id="q-num">Pergunta 1 de 5</span>
+        <span class="tag-chopp" id="q-chopp">🍺 Valendo chopp</span>
+      </div>
+      <h2 id="q-texto"></h2>
+      <div class="opcoes" id="q-opcoes"></div>
+      <p class="feedback" id="q-feedback" aria-live="polite"></p>
+    </div>
+    <div class="egon-lateral">
+      <div class="balao balao-esq" id="balao-quiz">Pensa bem...</div>
+      <div class="egon" id="egon-quiz"><img src="assets/egon/pensando.webp" alt=""></div>
+      <div class="sombra"></div>
+    </div>
+  </div>
+  <div class="aviso-chopp" id="aviso-chopp" aria-hidden="true">
+    <div class="caneca">🍺</div>
+    <p>Agora vale <span class="ouro">chopp!</span></p>
+    <small>Acerte as próximas 3 perguntas</small>
+  </div>
+</section>
+
+<!-- RESULTADO -->
+<section id="tela-resultado" class="tela" aria-label="Resultado">
+  <canvas id="confete"></canvas>
+  <div class="resultado-grid">
+    <div class="egon-area">
+      <div class="egon" id="egon-res"><img src="assets/egon/comemorando.webp" alt=""></div>
+      <div class="sombra"></div>
+    </div>
+    <div class="resultado-texto">
+      <p class="placar"><span id="r-acertos">5</span><small> de <span id="r-total">5</span></small></p>
+      <h1 id="r-titulo">Parabéns!</h1>
+      <p id="r-msg" class="sub"></p>
+      <div class="premio" id="r-premio">
+        <span class="caneca grande">🍺</span>
+        <div><strong>Você ganhou um chopp!</strong><br>Mostre esta tela no balcão do estande.</div>
+      </div>
+      <button class="btn-principal" data-acao="inicio">Finalizar</button>
+      <p class="volta">Voltando ao início em <span id="r-contagem">20</span>s</p>
+    </div>
+  </div>
+</section>
+
+<!-- PAUSADO -->
+<section id="tela-pausa" class="tela" aria-label="Pausado">
+  <div class="pausa">
+    <div class="egon"><img src="assets/egon/pensando.webp" alt=""></div>
+    <h1>Já voltamos!</h1>
+    <p class="sub">O quiz está em pausa por alguns instantes.</p>
+    <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo-pausa">
+  </div>
+</section>
+
+<!-- MODAL -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" hidden>
+  <div class="modal-caixa">
+    <img src="assets/egon/like.webp" alt="" class="modal-egon">
+    <h3 id="modal-titulo">Você já jogou!</h3>
+    <p id="modal-texto">Pode jogar de novo. Boa sorte nessa rodada!</p>
+    <button class="btn-principal" id="modal-ok">Bora jogar</button>
+  </div>
+</div>
+
+<!-- STATUS (toque 5x no logo do topo) -->
+<div class="status" id="status" hidden>
+  <div class="status-caixa">
+    <h3>Status do totem</h3>
+    <dl id="status-lista"></dl>
+    <div class="status-acoes">
+      <button id="st-sync">Reenviar pendentes</button>
+      <button id="st-reload">Recarregar</button>
+      <button id="st-sair">Sair da tela cheia</button>
+      <button id="st-fechar" class="primario">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script type="module" src="js/totem.js"></script>
+</body>
+</html>
