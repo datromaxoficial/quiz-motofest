@@ -149,6 +149,16 @@ export class Palco {
     const r = this.ancora?.getBoundingClientRect(); if (!r) return;
     this.montarMoto(); this.livre = { x: xPx, y: r.bottom, alturaPx: r.height, acao: 'pilotar' };
   }
+  // Troca de tela: se a nova âncora fica do outro lado, ele sai de cena e entra pela borda mais próxima,
+  // em vez de atravessar o texto da tela nova.
+  entrarPeloLado() {
+    const r = this.ancora?.getBoundingClientRect(); if (!r || this.arrastando) return;
+    const atual = this.mundoParaTela(new Vector3(this.pos.x, this.pos.y, 0)).x;
+    const alvo = r.left + r.width / 2;
+    if (Math.abs(alvo - atual) < this.w * 0.3) return;
+    const margem = r.width * 0.9 + 40;
+    this.teleportar(alvo < this.w / 2 ? -margem : this.w + margem);
+  }
   teleportar(xPx) {
     const r = this.ancora?.getBoundingClientRect(); if (!r) return;
     const p = this.telaParaMundo(xPx, r.bottom); this.pos.x = p.x; this.pos.y = p.y; this.vel.x = 0; this.vel.y = 0;

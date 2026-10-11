@@ -565,3 +565,39 @@ body.retrato .placa-motivo { font-size: calc(var(--u) * 2.3); top: calc(var(--u)
 body.retrato .modal-acoes { flex-wrap: wrap; }
 body.retrato .modal-acoes > * { flex: 1 1 100%; }
 body.retrato .modal-acoes .btn-principal { font-size: calc(var(--u) * 3.2); }
+
+/* ================= identidade Exclusive Gold: amarelo da marca (#FFAB02) junto com o azul ================= */
+:root { --marca: #FFAB02; --marca-claro: #FFD166; --marca-escuro: #1B1200; }
+/* campos lado a lado (WhatsApp + placa): cada um com a própria altura, sem esticar */
+.linha { align-items: start; }
+.campo input { height: calc(var(--u) * 7.8); }
+body.retrato .campo input { height: calc(var(--u) * 9.4); }
+/* título dos cartões com traço dourado */
+.cartao h2 { position: relative; padding-left: calc(var(--u) * 1.8); }
+.cartao h2::before { content: ''; position: absolute; left: 0; top: .14em; bottom: .14em; width: calc(var(--u) * .7); border-radius: 99px; background: linear-gradient(180deg, var(--marca-claro), var(--marca)); box-shadow: 0 0 calc(var(--u) * 1.6) rgba(255,171,2,.55); }
+/* etapas: a atual em dourado */
+.etapas li.atual { background: rgba(255,171,2,.14); color: #FFE3A3; box-shadow: inset 0 0 0 1px rgba(255,171,2,.35); }
+.etapas li.atual b { background: var(--marca); border-color: var(--marca-claro); color: var(--marca-escuro); }
+/* medidor de preenchimento em dourado */
+.medidor i.on { background: var(--marca); box-shadow: 0 0 calc(var(--u) * 1.2) rgba(255,171,2,.65); }
+/* associado: pílula dourada */
+.escolha-pilula { background: linear-gradient(180deg, var(--marca-claro), var(--marca)); box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 2) rgba(255,171,2,.45); }
+.escolha button[aria-checked="true"] { color: var(--marca-escuro); }
+/* LGPD marcado em dourado */
+.lgpd input:checked + .lgpd-caixa { background: var(--marca); border-color: var(--marca-claro); color: var(--marca-escuro); }
+/* botão principal: dourado da marca (o azul fica para os detalhes) */
+.btn-principal { color: var(--marca-escuro); background: linear-gradient(180deg, #FFE08A, var(--marca) 55%, #E89400);
+  box-shadow: 0 calc(var(--u) * 1.2) calc(var(--u) * 3.2) rgba(255,171,2,.38), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -3px 0 rgba(140,70,0,.35); }
+#btn-comecar.falta { filter: grayscale(.85) brightness(.7); }
+@keyframes pronto { 50% { box-shadow: 0 calc(var(--u) * 1.2) calc(var(--u) * 4.5) rgba(255,171,2,.8), inset 0 2px 0 rgba(255,255,255,.55); } }
+/* quiz: número e tema com dourado, letras das alternativas com contorno dourado */
+.q-num b { background-image: linear-gradient(180deg, #FFF3CF, var(--marca)); }
+.q-tag { color: var(--marca-claro); background: rgba(255,171,2,.09); border-color: rgba(255,171,2,.35); }
+.progresso li.passou::before, .progresso li.atual::before { background: linear-gradient(90deg, var(--azul-2), var(--marca)); }
+.selo { color: var(--marca-claro); background: rgba(255,171,2,.08); border-color: rgba(255,171,2,.38); }
+.placa-sem { color: var(--marca-claro); background: rgba(255,171,2,.08); border-color: rgba(255,171,2,.35); }
+.placa-sem:active { background: rgba(255,171,2,.18); }
+/* aviso com dois botões: um embaixo do outro, largura total (o texto nunca sai do botão) */
+.modal-acoes { flex-wrap: wrap; }
+.modal-acoes > * { flex: 1 1 100%; }
+#r-msg[hidden] { display: none; }

@@ -4,76 +4,121 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#00142F">
+<meta name="color-scheme" content="dark">
 <title>Painel do Quiz</title>
 <link rel="icon" href="assets/icone.png">
-<link rel="stylesheet" href="css/painel.css?v=20261011175544">
+<link rel="stylesheet" href="css/painel.css?v=20261011203032">
 </head>
 <body>
-<header class="topo">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="p-pessoas" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 4.6a3.4 3.4 0 010 6.6M18 14.8c1.9.7 3.2 2.4 3.5 5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="p-chopp" viewBox="0 0 24 24"><path d="M5 7h10v12a2 2 0 01-2 2H7a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 10h2.5a2 2 0 012 2v3a2 2 0 01-2 2H15" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 7.5a3 3 0 012.5-4.3 3.3 3.3 0 015.6-.4 2.8 2.8 0 013 4.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="p-escudo" viewBox="0 0 24 24"><path d="M12 2.8l7.5 3v5.6c0 4.6-3.1 8.4-7.5 9.8-4.4-1.4-7.5-5.2-7.5-9.8V5.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 12l2.3 2.3 4.5-4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="p-alvo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="p-placa" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 9.5h19M7 14h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="p-sair" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="p-estrela" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.5l6-.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="p-baixar" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="p-whats" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5l.8 2c.1.1.1.3 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6l.9 1.4c.6.9 1.4 1.3 1.7 1.5.3.1.5.1.6 0l.7-.9c.2-.3.4-.2.7-.1l1.9.9c.2.1.4.2.5.3.1.3.1.7-.1 1.4z" fill="currentColor"/></symbol>
+  <symbol id="p-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="p-pausa" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></symbol>
+  <symbol id="p-som" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15.5 9a4.2 4.2 0 010 6M18.2 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="p-lixo" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="p-email" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="p-cadeado" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="p-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="ceu" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></div>
+
+<header class="topo" id="topo" hidden>
   <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="logo">
-  <div class="topo-titulo">Painel do Quiz <span id="badge-demo" class="badge" hidden>Modo demonstração</span></div>
+  <div class="topo-titulo"><span>Painel do Quiz</span><small>Gravatá Motofest 2026</small> <span id="badge-demo" class="badge" hidden>Demonstração</span></div>
   <span class="ao-vivo" id="ao-vivo" hidden><i></i> Ao vivo</span>
-  <button id="btn-sair" class="link" hidden>Sair</button>
+  <button id="btn-sair" class="btn-icone" hidden title="Sair do painel"><svg><use href="#p-sair"/></svg><span>Sair</span></button>
 </header>
 
 <main>
   <!-- LOGIN -->
   <section id="login" class="login" hidden>
-    <form id="form-login" class="cartao login-cartao">
+    <div class="login-heroi">
+      <img src="assets/logo-branco.svg" alt="Exclusive Gold" class="login-logo">
       <canvas class="login-egon" id="login-egon" aria-hidden="true"></canvas>
-      <h1>Entrar no painel</h1>
-      <label>E-mail<input type="email" id="l-email" autocomplete="username" required></label>
-      <label>Senha<input type="password" id="l-senha" autocomplete="current-password" required></label>
-      <p class="erro" id="l-erro"></p>
-      <button class="btn primario" type="submit">Entrar</button>
+      <div class="login-chao" aria-hidden="true"></div>
+    </div>
+    <form id="form-login" class="login-cartao" novalidate>
+      <span class="sobre">Painel do Quiz · Motofest 2026</span>
+      <h1>Bem-vindo de <em>volta</em></h1>
+      <p class="login-sub">Acompanhe as participações e os chopps ao vivo.</p>
+      <label class="fl"><svg><use href="#p-email"/></svg><input type="email" id="l-email" autocomplete="username" placeholder=" " required><span>E-mail</span></label>
+      <label class="fl"><svg><use href="#p-cadeado"/></svg><input type="password" id="l-senha" autocomplete="current-password" placeholder=" " required><span>Senha</span></label>
+      <p class="erro" id="l-erro" role="alert"></p>
+      <button class="btn ouro grande" type="submit"><span>Entrar</span><svg><use href="#p-seta"/></svg></button>
       <p class="info">Você entra uma vez neste aparelho e o painel fica conectado.</p>
     </form>
   </section>
 
   <section id="app" hidden>
     <nav class="abas" role="tablist">
-      <button role="tab" data-aba="visao" aria-selected="true">Visão geral</button>
-      <button role="tab" data-aba="participantes" aria-selected="false">Participantes <span id="cont-part" class="pilula">0</span></button>
-      <button role="tab" data-aba="config" aria-selected="false">Configurações</button>
-      <button role="tab" data-aba="ajuda" aria-selected="false">Ajuda</button>
+      <span class="abas-pilula" aria-hidden="true"></span>
+      <button role="tab" data-aba="visao" aria-selected="true"><span class="longo">Visão geral</span><span class="curto">Resumo</span></button>
+      <button role="tab" data-aba="participantes" aria-selected="false">Contatos <span id="cont-part" class="pilula">0</span></button>
+      <button role="tab" data-aba="config" aria-selected="false"><span class="longo">Configurações</span><span class="curto">Ajustes</span></button>
     </nav>
 
     <!-- VISÃO GERAL -->
     <div class="aba" id="aba-visao">
-      <div class="acoes">
-        <button class="btn primario" data-exportar>⬇ Baixar Excel</button>
-        <button class="btn whats" id="btn-resumo">Enviar resumo no WhatsApp</button>
+      <div class="destaques">
+        <div class="kpi grande e" style="--i:0">
+          <span class="kpi-ic azul"><svg><use href="#p-pessoas"/></svg></span>
+          <span class="kpi-rot">Participações</span>
+          <strong id="k-total" data-num>0</strong>
+          <small id="k-unicos">0 pessoas</small>
+        </div>
+        <div class="kpi grande ouro e" style="--i:1">
+          <span class="kpi-ic ouro"><svg><use href="#p-chopp"/></svg></span>
+          <span class="kpi-rot">Chopps ganhos</span>
+          <strong id="k-chopps" data-num>0</strong>
+          <small id="k-estoque">sem limite</small>
+          <div class="barra"><i id="k-barra"></i></div>
+        </div>
+        <div class="kpi grande e" style="--i:2">
+          <span class="kpi-ic verde"><svg><use href="#p-escudo"/></svg></span>
+          <span class="kpi-rot">Associados EG</span>
+          <strong id="k-assoc">0%</strong>
+          <small id="k-assoc-n">0 associados</small>
+          <div class="barra verde"><i id="k-assoc-barra"></i></div>
+        </div>
       </div>
       <div class="kpis">
-        <div class="kpi"><span>Participações</span><strong id="k-total">0</strong><small id="k-unicos">0 pessoas</small></div>
-        <div class="kpi ouro"><span>Chopps ganhos</span><strong id="k-chopps">0</strong><small id="k-estoque">sem limite</small><div class="barra"><i id="k-barra"></i></div></div>
-        <div class="kpi"><span>Chopps entregues</span><strong id="k-entregues">0</strong><small id="k-pendentes">nenhum cupom pendente</small></div>
-        <div class="kpi"><span>Associados EG</span><strong id="k-assoc">0%</strong><small id="k-assoc-n">0 de 0</small></div>
-        <div class="kpi"><span>Prospects</span><strong id="k-prospects">0</strong><small id="k-prospects-n">não associados com veículo</small></div>
-        <div class="kpi"><span>Placas repetidas</span><strong id="k-repetidas">0</strong><small>usadas por mais de uma pessoa</small></div>
-        <div class="kpi"><span>Desistências</span><strong id="k-desist">0</strong><small>começaram e não terminaram</small></div>
-        <div class="kpi"><span>Acerto médio</span><strong id="k-acerto">0%</strong><small id="k-acerto-n">das respostas</small></div>
+        <div class="kpi e" style="--i:3"><span class="kpi-ic ouro"><svg><use href="#p-estrela"/></svg></span><span class="kpi-rot">Prospects</span><strong id="k-prospects" data-num>0</strong><small id="k-prospects-n">não associados com veículo</small></div>
+        <div class="kpi e" style="--i:4"><span class="kpi-ic azul"><svg><use href="#p-placa"/></svg></span><span class="kpi-rot">Placas repetidas</span><strong id="k-repetidas" data-num>0</strong><small>usadas por mais de uma pessoa</small></div>
+        <div class="kpi e" style="--i:5"><span class="kpi-ic vermelho"><svg><use href="#p-sair"/></svg></span><span class="kpi-rot">Desistências</span><strong id="k-desist" data-num>0</strong><small>começaram e não terminaram</small></div>
+        <div class="kpi e" style="--i:6"><span class="kpi-ic azul"><svg><use href="#p-alvo"/></svg></span><span class="kpi-rot">Acerto médio</span><strong id="k-acerto">0%</strong><small>das respostas</small></div>
+      </div>
+      <div class="acoes e" style="--i:7">
+        <button class="btn ouro" data-exportar><svg><use href="#p-baixar"/></svg>Baixar Excel</button>
+        <button class="btn whats" id="btn-resumo"><svg><use href="#p-whats"/></svg>Enviar relatório no WhatsApp</button>
       </div>
       <div class="graficos">
-        <div class="cartao">
+        <div class="cartao e" style="--i:8">
           <h2>Acertos por pergunta</h2>
           <div id="g-perguntas" class="barras-h"></div>
         </div>
-        <div class="cartao">
+        <div class="cartao e" style="--i:9">
           <h2>Participações por hora</h2>
-          <div id="g-horas" class="barras-v"></div>
+          <div id="g-horas" class="horas"></div>
         </div>
       </div>
     </div>
 
     <!-- PARTICIPANTES -->
     <div class="aba" id="aba-participantes" hidden>
-      <div class="acoes">
-        <input type="search" id="busca" placeholder="Buscar por nome, WhatsApp, placa ou cupom">
-        <select id="filtro">
-          <option value="">Todos</option>
+      <div class="filtros">
+        <label class="busca"><svg><use href="#p-busca"/></svg><input type="search" id="busca" placeholder="Nome, WhatsApp, placa ou cupom"></label>
+        <select id="filtro" aria-label="Filtrar">
+          <option value="">Todos os contatos</option>
           <option value="chopp">Ganharam chopp</option>
-          <option value="pendente">Chopp a entregar</option>
           <option value="assoc">Associados</option>
           <option value="nao-assoc">Não associados</option>
           <option value="prospects">Prospects (não associados com placa)</option>
@@ -81,108 +126,50 @@
           <option value="sem-placa">Sem placa</option>
           <option value="incompletos">Desistências</option>
         </select>
-        <button class="btn primario" data-exportar>⬇ Baixar Excel</button>
+        <button class="btn ouro" data-exportar><svg><use href="#p-baixar"/></svg><span>Excel</span></button>
       </div>
+      <p class="lista-info" id="lista-info"></p>
       <div class="cartao tabela-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Placa</th><th>Associado</th><th>Acertos</th><th>Chopp</th><th>Entrega</th></tr></thead>
+          <thead><tr><th>Contato</th><th>WhatsApp</th><th>Placa</th><th>Associado</th><th>Melhor partida</th><th>Chopp</th><th>Cadastro</th></tr></thead>
           <tbody id="tabela"></tbody>
         </table>
-        <p class="vazio" id="vazio" hidden>Nenhuma participação ainda.</p>
+        <p class="vazio" id="vazio" hidden>Nenhum contato por aqui ainda.</p>
       </div>
     </div>
 
     <!-- CONFIGURAÇÕES -->
     <div class="aba" id="aba-config" hidden>
-      <div class="cfg-grid">
-        <div class="cartao">
+      <div class="cfg-simples">
+        <div class="cartao e" style="--i:0">
           <h2>Totem</h2>
           <label class="chave">
             <input type="checkbox" id="c-pausado">
+            <span class="cfg-ic"><svg><use href="#p-pausa"/></svg></span>
+            <span class="chave-txt"><strong>Pausar o quiz</strong><small>O totem mostra "Já voltamos!" até você reativar.</small></span>
             <span class="trilho"><i></i></span>
-            <span><strong>Pausar o quiz</strong><br><small>O totem mostra "Já voltamos!" até você reativar.</small></span>
           </label>
           <label class="chave">
             <input type="checkbox" id="c-som">
+            <span class="cfg-ic"><svg><use href="#p-som"/></svg></span>
+            <span class="chave-txt"><strong>Sons no totem</strong><small>Efeitos sonoros do quiz.</small></span>
             <span class="trilho"><i></i></span>
-            <span><strong>Sons no totem</strong><br><small>Efeitos sonoros do quiz. Vale na hora.</small></span>
           </label>
-          <label class="campo">Limite de chopps <small>(0 = sem limite)</small>
-            <input type="number" id="c-limite" min="0" step="1">
+        </div>
+        <div class="cartao e" style="--i:1">
+          <h2>Chopps</h2>
+          <label class="campo">Limite de chopps <small>0 = sem limite</small>
+            <span class="limite-linha">
+              <input type="number" id="c-limite" min="0" step="1" inputmode="numeric">
+              <button class="btn ouro" id="c-limite-salvar">Salvar</button>
+            </span>
           </label>
-          <p class="info">Chopps já ganhos: <strong id="c-ganhos">0</strong> <button class="link" id="c-zerar">Zerar contador</button></p>
-          <div class="zona-perigo">
-            <strong>Limpar dados de teste</strong>
-            <small>Apaga todas as participações, desistências, cupons e contadores, no painel e nos totens. Use antes do evento começar.</small>
-            <button class="btn perigo" id="c-limpar">Limpar todos os dados</button>
-          </div>
+          <p class="info">Ganhos até agora: <strong id="c-ganhos">0</strong>. Ao chegar no limite, quem acertar não recebe cupom e a equipe é avisada para entrar em contato.</p>
         </div>
-        <div class="cartao" id="c-regras">
-          <h2>Regras do jogo</h2>
-          <div class="regras-grid">
-            <label class="campo">Perguntas por partida<input type="number" id="c-total" min="1" step="1"></label>
-            <label class="campo">Aquecimento<input type="number" id="c-aquec" min="0" step="1"></label>
-            <label class="campo">Valendo chopp<input type="number" id="c-decis" min="1" step="1"></label>
-            <label class="campo">Acertos para ganhar<input type="number" id="c-acertos" min="1" step="1"></label>
-          </div>
-          <label class="chave">
-            <input type="checkbox" id="c-sorteio">
-            <span class="trilho"><i></i></span>
-            <span><strong>Sortear perguntas</strong><br><small>Cada partida sorteia perguntas diferentes do banco e embaralha as alternativas, evitando repetir os conjuntos recentes.</small></span>
-          </label>
-          <ul class="regras-erro" id="c-regras-erro"></ul>
-          <p class="info">Padrão do Motofest: 5 perguntas, 2 de aquecimento, 3 valendo chopp e precisa acertar as 3. O aquecimento não conta para o prêmio.</p>
-        </div>
-      </div>
-      <div class="cartao banco">
-        <h2>Banco de perguntas</h2>
-        <p class="info" id="c-banco-info"></p>
-        <p class="info">Marque a alternativa certa de cada pergunta. Desmarque "Ativa" para tirar uma pergunta do sorteio sem apagá-la.</p>
-        <div id="c-perguntas"></div>
-        <button class="btn" id="c-add">+ Adicionar pergunta</button>
-      </div>
-      <div class="salvar-barra">
-        <span id="c-msg"></span>
-        <button class="btn" id="c-restaurar">Restaurar banco padrão</button>
-        <button class="btn primario" id="c-salvar">Salvar alterações</button>
-      </div>
-    </div>
-    <!-- AJUDA -->
-    <div class="aba" id="aba-ajuda" hidden>
-      <div class="ajuda">
-        <div class="cartao">
-          <h2>Entregar o chopp no balcão</h2>
-          <ol>
-            <li>O ganhador mostra a tela do totem com o <b>código de 4 letras</b> (ex.: HLCG).</li>
-            <li>Aqui no painel, abra <b>Participantes</b> e escolha o filtro <b>Chopp a entregar</b> (ou busque pelo código).</li>
-            <li>Confira o nome e toque em <b>Entregar</b>. Errou? Toque em "Entregue" para desfazer.</li>
-          </ol>
-        </div>
-        <div class="cartao">
-          <h2>Antes de abrir o estande</h2>
-          <ol>
-            <li>Abra o totem em cada tablet com internet e use "Adicionar à tela inicial" no Chrome.</li>
-            <li>Faça algumas partidas de teste (ganhando e perdendo) e confira se aparecem aqui.</li>
-            <li>Em <b>Configurações</b>, toque em <b>Limpar todos os dados</b> (senha <b>123</b>) com os tablets ligados e com internet.</li>
-            <li>Se houver estoque limitado, defina o <b>limite de chopps</b>.</li>
-          </ol>
-        </div>
-        <div class="cartao">
-          <h2>Durante os 3 dias</h2>
-          <ul>
-            <li>O totem funciona <b>com ou sem internet</b>. Sem internet ele guarda as participações e envia sozinho quando a conexão voltar.</li>
-            <li>Toque 5 vezes no logo do totem para ver o status: <b>Aguardando envio</b> mostra o que ainda não chegou aqui. No fim do dia, deixe o tablet com internet até ficar 0.</li>
-            <li>Nunca limpe os dados do navegador do tablet durante o evento.</li>
-            <li>Para pausar o quiz (ex.: acabou o chopp), use <b>Pausar o quiz</b> em Configurações.</li>
-          </ul>
-        </div>
-        <div class="cartao">
-          <h2>Relatórios</h2>
-          <ul>
-            <li><b>Baixar Excel</b>: participantes, resumo, prospects (não associados com placa), placas repetidas e desistências.</li>
-            <li><b>Enviar resumo no WhatsApp</b>: os números principais em uma mensagem.</li>
-            <li><b>Prospects</b> são não associados que informaram placa: ótimos contatos para oferecer a proteção veicular.</li>
-          </ul>
+        <div class="cartao zona-perigo e" style="--i:2">
+          <h2>Limpar dados de teste</h2>
+          <small>Apaga participações, desistências, cupons e contadores, no painel e nos totens. Use só antes do evento, com os tablets ligados e com internet.</small>
+          <button class="btn perigo" id="c-limpar"><svg><use href="#p-lixo"/></svg>Limpar todos os dados</button>
         </div>
       </div>
     </div>
@@ -194,7 +181,7 @@
   <a class="selo-dm" href="https://wa.me/5581993984490?text=Ol%C3%A1!%20Vi%20o%20Quiz%20Exclusive%20Gold%2C%20desenvolvido%20pela%20DatroMax%2C%20e%20quero%20saber%20mais." target="_blank" rel="noopener" title="Falar com o desenvolvedor pelo WhatsApp">
     <img src="assets/datromax.png" alt="DatroMax">
     <span>Desenvolvido por <b>DatroMax</b></span>
-    <svg viewBox="0 0 24 24" width="1em" height="1em" class="ico-whats" aria-hidden="true"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5l.8 2c.1.1.1.3 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6l.9 1.4c.6.9 1.4 1.3 1.7 1.5.3.1.5.1.6 0l.7-.9c.2-.3.4-.2.7-.1l1.9.9c.2.1.4.2.5.3.1.3.1.7-.1 1.4z" fill="currentColor"/></svg>
+    <svg viewBox="0 0 24 24" width="1em" height="1em" class="ico-whats" aria-hidden="true"><use href="#p-whats"/></svg>
   </a>
   <a class="insta-dm" href="https://www.instagram.com/datromax.oficial" target="_blank" rel="noopener" title="Instagram da DatroMax">
     <svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.4" cy="6.6" r="1.3" fill="currentColor"/></svg>
@@ -204,13 +191,30 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<!-- Enviar relatório: pede o WhatsApp de quem recebe -->
+<div class="dlg" id="dlg-enviar" hidden>
+  <div class="dlg-caixa envio">
+    <h2>Enviar relatório no WhatsApp</h2>
+    <label class="campo">WhatsApp de quem vai receber
+      <input type="tel" id="env-whats" inputmode="numeric" autocomplete="off" placeholder="(81) 99999-9999">
+    </label>
+    <div class="chips" id="env-recentes" hidden></div>
+    <p class="erro" id="env-erro" role="alert"></p>
+    <div class="env-opcoes">
+      <button class="opcao-envio" id="env-resumo"><span class="kpi-ic verde"><svg><use href="#p-whats"/></svg></span><span><b>Resumo em texto</b><small>Os números do quiz direto na conversa.</small></span></button>
+      <button class="opcao-envio" id="env-excel"><span class="kpi-ic ouro"><svg><use href="#p-baixar"/></svg></span><span><b>Planilha Excel</b><small>Baixa o arquivo e abre a conversa para você anexar.</small></span></button>
+    </div>
+    <div class="dlg-acoes"><button class="btn" id="env-cancelar">Cancelar</button></div>
+  </div>
+</div>
+
 <!-- Confirmação de limpeza -->
 <div class="dlg" id="dlg-limpar" hidden>
-  <div class="dlg-caixa cartao">
+  <div class="dlg-caixa">
     <h2>Apagar todos os dados?</h2>
     <p>Isso apaga <b>definitivamente</b> <span id="limpar-resumo"></span> Não dá para desfazer.</p>
     <p class="info">Dica: baixe o Excel antes, por segurança. Faça a limpeza com os tablets ligados e com internet.</p>
-    <button class="btn" id="limpar-excel">⬇ Baixar Excel antes</button>
+    <button class="btn" id="limpar-excel"><svg><use href="#p-baixar"/></svg>Baixar Excel antes</button>
     <label class="campo">Senha de confirmação<input type="password" id="limpar-senha" inputmode="numeric" autocomplete="off"></label>
     <label class="ciente"><input type="checkbox" id="limpar-ciente"> Entendo que todos os dados serão apagados</label>
     <p class="erro" id="limpar-erro"></p>
@@ -221,7 +225,7 @@
   </div>
 </div>
 
-<script src="config.js?v=20261011175544"></script>
-<script type="module" src="js/painel.js?v=20261011175544"></script>
+<script src="config.js?v=20261011203032"></script>
+<script type="module" src="js/painel.js?v=20261011203032"></script>
 </body>
 </html>

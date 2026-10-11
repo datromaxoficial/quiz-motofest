@@ -16,6 +16,8 @@ export const DEFAULT_CONFIG = migrarConfig(null);
 
 // Nos testes automáticos a nuvem é o emulador oficial do Firebase (window.FIREBASE_CONFIG_TESTE).
 // window.FORCAR_DEMO: testes automáticos que não podem tocar no Firebase de produção.
+// No computador (localhost) com ?demo na URL: prévia para aprovar, só neste navegador, sem gravar na nuvem.
+if (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('demo')) window.FORCAR_DEMO = true;
 const cfg = typeof window !== 'undefined' && !window.FORCAR_DEMO ? (window.FIREBASE_CONFIG_TESTE || window.FIREBASE_CONFIG) : null;
 export const modoDemo = !(cfg && cfg.apiKey && cfg.projectId);
 

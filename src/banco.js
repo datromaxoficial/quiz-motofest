@@ -33,23 +33,13 @@ export const BANCO_PADRAO = [
 ];
 
 const clonar = (o) => JSON.parse(JSON.stringify(o));
-const normalizarTexto = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\W+/g, ' ').trim();
 
-// Junta a configuração salva com os padrões. Configurações antigas (campo `perguntas`, sem banco)
-// viram banco: as perguntas que a equipe já tinha editado são mantidas e as 15 novas entram junto.
+// Junta a configuração salva com os padrões. As regras do jogo e o banco de perguntas são FIXOS
+// (5 perguntas: 2 de aquecimento + 3 valendo chopp, ganha quem acertar as 3, sorteio entre as 20):
+// mesmo que exista algo antigo salvo na nuvem, o totem sempre usa o padrão. Do painel só vêm pausa, som e limite.
 export function migrarConfig(c) {
   const salvo = c || {};
-  let banco;
-  if (Array.isArray(salvo.banco) && salvo.banco.length) {
-    banco = salvo.banco.map((p, i) => ({ ...p, id: p.id || `p-${i + 1}`, ativa: p.ativa !== false }));
-  } else if (Array.isArray(salvo.perguntas) && salvo.perguntas.length) {
-    const antigas = salvo.perguntas.map((p, i) => {
-      const igual = BANCO_PADRAO.find((b) => normalizarTexto(b.texto) === normalizarTexto(p.texto));
-      return { id: igual?.id || `antiga-${i + 1}`, tag: p.tag || igual?.tag || '', texto: p.texto, opcoes: p.opcoes, correta: p.correta, ativa: true };
-    });
-    const textos = new Set(antigas.map((p) => normalizarTexto(p.texto)));
-    banco = [...antigas, ...clonar(BANCO_PADRAO.filter((b) => b.id.startsWith('extra-') && !textos.has(normalizarTexto(b.texto))))];
-  } else banco = clonar(BANCO_PADRAO);
-  const { perguntas, ...resto } = salvo; void perguntas;
-  return { pausado: false, som: true, limiteChopps: 0, ...resto, ...normalizarRegras({ ...REGRAS_PADRAO, ...resto }), banco };
+  const { perguntas, banco, totalPerguntas, aquecimento, decisivas, acertosParaGanhar, sorteio, ...resto } = salvo;
+  void perguntas; void banco; void totalPerguntas; void aquecimento; void decisivas; void acertosParaGanhar; void sorteio;
+  return { pausado: false, som: true, limiteChopps: 0, ...resto, ...normalizarRegras(REGRAS_PADRAO), banco: clonar(BANCO_PADRAO) };
 }

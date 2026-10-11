@@ -100,7 +100,8 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1194, height: 834
     const { partida, leads } = await jogar(page, [1, 1, 1, 0, 1], 'João Teste', PRINTS && path.join(PRINTS, `${tam}-derrota`));
     assert.match(await page.textContent('#r-titulo'), /não foi dessa vez/i);
     assert.equal(await page.isVisible('#r-premio'), false);
-    assert.match(await page.textContent('#r-msg'), /acertou 2 de 3 perguntas que valiam chopp/i);
+    assert.equal(await page.textContent('#r-acertos'), '2'); assert.equal(await page.textContent('#r-total'), '3'); // placar: 2 de 3 valendo chopp
+    assert.match(await page.textContent('#r-msg'), /confira a resposta certa/i);
     const itens = await page.$$eval('#r-revisao li', (lis) => lis.map((li) => ({ cls: li.className, txt: li.textContent.replace(/\s+/g, ' ') })));
     assert.equal(itens.length, 3);
     assert.deepEqual(itens.map((i) => i.cls), ['ok', 'erro', 'ok']);
@@ -122,54 +123,96 @@ test('casos 3, 4 e 5: 2, 1 ou 0 acertos nas decisivas não ganham', async () => 
     const { leads } = await jogar(page, plano);
     const l = leads.at(-1);
     assert.equal(l.acertosDecisivas, acertos); assert.equal(l.ganhouChopp, false); assert.equal(l.codigo, '');
-    assert.match(await page.textContent('#r-msg'), new RegExp(`acertou ${acertos} de 3`));
-    await page.click('#tela-resultado [data-acao="inicio"]');
+    await page.waitForFunction((n) => document.getElementById('r-acertos').textContent === String(n), acertos);
+    assert.match(await page.textContent('#r-msg'), acertos === 2 ? /confira a resposta certa/i : /confira as respostas certas/i);
+    await page.click('#tela-resultado [data-acao="inicio"]'); if (await page.isVisible('#modal')) await page.click('#modal-ok');
     await page.waitForSelector('#tela-descanso.ativa');
     await page.waitForTimeout(600);
   }
   await ctx.close();
 });
 
-test('caso 13: painel registra a entrega, desfaz e filtra cupons aguardando', async () => {
+test('caso 13: painel mostra quem ganhou com o cupom, sem etapa de entrega', async () => {
   const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
   await jogar(page, [1, 1, 1, 1, 1], 'Ana Ganhadora');
+  // a tela final fica 60 s (tempo de mostrar no balcão); quem ganhou confirma antes de começar de novo
+  await page.waitForTimeout(25000);
+  assert.ok(await page.isVisible('#tela-resultado.ativa'), 'tela final continua depois de 25 s');
+  const resta = Number(await page.textContent('#r-contagem'));
+  assert.ok(resta > 25 && resta <= 36, `contagem de 60 s (restam ${resta})`);
+  await page.click('#tela-resultado [data-acao="inicio"]');
+  await page.waitForSelector('#modal:not([hidden])');
+  await page.click('#modal-cancelar');
+  assert.ok(await page.isVisible('#tela-resultado.ativa'), 'voltar ao cupom mantém a tela final');
+  await page.click('#tela-resultado [data-acao="inicio"]'); await page.click('#modal-ok');
+  await page.waitForSelector('#tela-descanso.ativa');
+  await jogar(page, [1, 1, 1, 0, 1], 'Bruno Perdeu');
+  const codigo = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads')).find((l) => l.ganhouChopp).codigo);
   await page.goto(`${base}/painel.html`);
+  await page.waitForFunction(() => document.getElementById('k-chopps').textContent === '1' && document.getElementById('k-total').textContent === '2');
   await page.click('[data-aba="participantes"]');
-  await page.selectOption('#filtro', 'pendente');
-  assert.equal(await page.locator('#tabela tr').count(), 1);
-  page.on('dialog', (d) => d.accept());
-  await page.click('[data-entregar][data-v="1"]');
-  await page.waitForFunction(() => document.querySelectorAll('#tabela tr').length === 0);
-  let l = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads'))[0]);
-  assert.equal(l.entregue, true); assert.ok(l.entregueEm);
+  assert.equal(await page.locator('#tabela tr').count(), 2);
+  assert.equal(await page.locator('[data-entregar]').count(), 0, 'não existe mais botão de entregar');
   await page.selectOption('#filtro', 'chopp');
-  await page.click('button.entregue'); // desfazer (confirmação aceita)
-  await page.waitForSelector('[data-entregar][data-v="1"]');
-  l = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads'))[0]);
-  assert.equal(l.entregue, false);
-  await page.click('[data-aba="visao"]');
-  assert.equal(await page.textContent('#k-entregues'), '0');
+  assert.equal(await page.locator('#tabela tr').count(), 1);
+  assert.match(await page.textContent('#tabela'), new RegExp(`Ana Ganhadora[\\s\\S]*Ganhou[\\s\\S]*${codigo}`));
+  await page.fill('#busca', codigo);
+  assert.equal(await page.locator('#tabela tr').count(), 1, 'busca pelo código do cupom');
   await ctx.close();
 });
 
-test('caso 14: painel valida e salva as regras, e o totem passa a usar', async () => {
+test('painel: relatório no WhatsApp pede o número de quem recebe; participante abre conversa sem mensagem pronta', async () => {
   const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
-  await page.goto(`${base}/painel.html`);
-  await page.click('[data-aba="config"]');
-  // soma errada: não salva
-  await page.fill('#c-decis', '2');
-  await page.click('#c-salvar');
-  assert.match(await page.textContent('#c-regras-erro'), /precisa ser igual ao total/);
-  assert.equal(await page.evaluate(() => localStorage.getItem('eg_config')), null);
-  // regra nova válida: 6 perguntas, 2 aquecimento, 4 valendo, ganha com 3
-  await page.fill('#c-total', '6'); await page.fill('#c-aquec', '2'); await page.fill('#c-decis', '4'); await page.fill('#c-acertos', '3');
-  await page.click('#c-salvar');
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('eg_config') || '{}').totalPerguntas === 6);
-  await page.goto(`${base}/index.html`);
-  await page.waitForFunction(() => window.__egon && !document.body.classList.contains('carregando'));
-  const { partida, leads } = await jogar(page, [0, 0, 1, 1, 1, 0]);
-  assert.equal(partida.length, 6); assert.equal(partida.filter((q) => q.valeChopp).length, 4);
-  assert.equal(leads.at(-1).ganhouChopp, true, '3 de 4 ganha com a regra salva');
+  await ctx.route(/wa\.me|whatsapp\.com/, (r) => r.fulfill({ contentType: 'text/html', body: 'ok' })); // não sai para a internet
+  await jogar(page, [1, 1, 1, 1, 1], 'Carla Contato');
+  const whats = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads'))[0].whatsapp);
+  await page.goto(base + '/painel.html');
+  await page.waitForFunction(() => document.getElementById('k-total').textContent === '1');
+  await page.click('[data-aba="participantes"]');
+  assert.equal(await page.getAttribute('#tabela .btn-whats', 'href'), 'https://wa.me/55' + whats, 'conversa direta, sem texto pronto');
+  await page.click('[data-aba="visao"]');
+  await page.click('#btn-resumo');
+  await page.fill('#env-whats', '8199');
+  await page.click('#env-resumo');
+  assert.match(await page.textContent('#env-erro'), /DDD/);
+  await page.fill('#env-whats', '81 98888-7777');
+  assert.equal(await page.inputValue('#env-whats'), '(81) 98888-7777');
+  const [aba] = await Promise.all([ctx.waitForEvent('page'), page.click('#env-resumo')]);
+  await aba.waitForURL(/wa\.me/);
+  assert.match(aba.url(), /^https:\/\/(wa\.me|api\.whatsapp\.com)\/.*5581988887777/);
+  await aba.close();
+  // lembra o número para a próxima vez
+  await page.click('#btn-resumo');
+  assert.equal(await page.inputValue('#env-whats'), '(81) 98888-7777');
+  const [download] = await Promise.all([page.waitForEvent('download'), ctx.waitForEvent('page'), page.click('#env-excel')]);
+  assert.match(download.suggestedFilename(), /^quiz-exclusive-gold-.*\.xlsx$/);
+  await ctx.close();
+});
+
+test('caso 14: configurações simples (pausar, limite) valem no totem e as regras ficam fixas', async () => {
+  const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
+  // regra antiga salva por engano não muda o jogo: continua 5 perguntas, 3 valendo chopp
+  await page.evaluate(() => localStorage.setItem('eg_config', JSON.stringify({ totalPerguntas: 6, aquecimento: 2, decisivas: 4, acertosParaGanhar: 1 })));
+  const painel = await ctx.newPage();
+  await painel.goto(`${base}/painel.html`);
+  await painel.click('[data-aba="config"]');
+  assert.equal(await painel.locator('#c-total').count(), 0, 'sem campos de regra no painel');
+  // limite de 1 chopp
+  await painel.fill('#c-limite', '1'); await painel.click('#c-limite-salvar');
+  await painel.waitForFunction(() => JSON.parse(localStorage.getItem('eg_config') || '{}').limiteChopps === 1);
+  await page.reload(); await page.waitForFunction(() => window.__egon && !document.body.classList.contains('carregando'));
+  const { partida, leads } = await jogar(page, [1, 1, 1, 1, 1]);
+  assert.equal(partida.length, 5); assert.equal(partida.filter((q) => q.valeChopp).length, 3);
+  assert.equal(leads.at(-1).ganhouChopp, true, 'primeiro chopp dentro do limite');
+  await page.click('#tela-resultado [data-acao="inicio"]'); if (await page.isVisible('#modal')) await page.click('#modal-ok'); await page.waitForSelector('#tela-descanso.ativa');
+  const r2 = await jogar(page, [1, 1, 1, 1, 1], 'Segunda Pessoa');
+  assert.equal(r2.leads.at(-1).ganhouChopp, false, 'limite atingido: sem cupom');
+  assert.equal(r2.leads.at(-1).choppEsgotado, true);
+  // pausar no painel -> totem mostra "Já voltamos!"
+  await painel.click('label:has(#c-pausado)');
+  await page.waitForSelector('#tela-pausa.ativa', { timeout: 10000 });
+  await painel.click('label:has(#c-pausado)');
+  await page.waitForSelector('#tela-descanso.ativa', { timeout: 10000 });
   await ctx.close();
 });
 

@@ -1,5 +1,5 @@
 // Simulação do evento com a nuvem de verdade (emulador oficial do Firebase, com as regras do firestore.rules):
-// tablet online, tablet sem internet, tablet desligado e religado, painel recebendo ao vivo, entrega e limpeza.
+// tablet online, tablet sem internet, tablet desligado e religado, painel recebendo ao vivo, reenvio sem duplicar e limpeza.
 // Rodar: (1) firebase emulators:start --project demo-quiz --only firestore,auth  (com o firestore.rules usando painel@teste.com)
 //        (2) npm run test:sync
 import { test, before, after } from 'node:test';
@@ -88,12 +88,11 @@ async function jogar(page, plano, whats) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads')).at(-1));
 }
 
-test('evento completo: online, sem internet, desligado, painel ao vivo, entrega e limpeza', async () => {
+test('evento completo: online, sem internet, desligado, painel ao vivo, reenvio sem duplicar e limpeza', async () => {
   const painel = await abrirPainel();
   await painel.page.waitForTimeout(3000);
   const b0 = await contagem(painel.page);
   const c0 = await painel.page.evaluate(() => Number(document.getElementById('k-chopps').textContent));
-  const e0 = Number(await painel.page.textContent('#k-entregues'));
   const espera = (n) => painel.page.waitForFunction((v) => Number(document.getElementById('k-total').textContent) === v, b0 + n, { timeout: 40000 });
 
   // 1) tablet com internet: ganha o chopp e o painel recebe na hora
@@ -105,7 +104,7 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   await painel.page.waitForFunction((v) => Number(document.getElementById('k-chopps').textContent) === v, c0 + 1, { timeout: 15000 });
 
   // 2) tablet sem internet: a participação fica guardada e aparece como pendente
-  await totem.click('#tela-resultado [data-acao="inicio"]'); await totem.waitForSelector('#tela-descanso.ativa');
+  await totem.click('#tela-resultado [data-acao="inicio"]'); if (await totem.isVisible('#modal')) await totem.click('#modal-ok'); await totem.waitForSelector('#tela-descanso.ativa');
   await tablet.setOffline(true);
   const l2 = await jogar(totem, [1, 1, 1, 0, 1], '11900000002');
   assert.equal(l2.ganhouChopp, false);
@@ -119,7 +118,7 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   await totem.waitForFunction(() => JSON.parse(localStorage.getItem('eg_leads')).every((l) => l._sync), null, { timeout: 30000 });
 
   // 4) sem internet + tablet desligado (página fechada) antes de sincronizar; religa com internet
-  await totem.click('#tela-resultado [data-acao="inicio"]'); await totem.waitForSelector('#tela-descanso.ativa');
+  await totem.click('#tela-resultado [data-acao="inicio"]'); if (await totem.isVisible('#modal')) await totem.click('#modal-ok'); await totem.waitForSelector('#tela-descanso.ativa');
   await tablet.setOffline(true);
   await jogar(totem, [0, 0, 0, 0, 0], '11900000003');
   await totem.close();
@@ -127,16 +126,11 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   totem = await abrirTotem(tablet);
   await espera(3);
 
-  // 5) balcão entrega o chopp; reenvio do tablet nunca desfaz a entrega
-  await painel.page.click('[data-aba="participantes"]');
-  await painel.page.selectOption('#filtro', 'pendente');
-  await painel.page.click('[data-entregar][data-v="1"]');
-  await painel.page.waitForFunction(() => document.querySelectorAll('#tabela tr').length === 0, null, { timeout: 10000 });
+  // 5) o tablet reenvia tudo de novo (ex.: falha no meio do envio): nada duplica no painel
   await totem.evaluate(() => { const ls = JSON.parse(localStorage.getItem('eg_leads')); ls.forEach((l) => { l._sync = false; }); localStorage.setItem('eg_leads', JSON.stringify(ls)); });
   await totem.reload(); await totem.waitForFunction(() => window.__egon);
   await totem.waitForTimeout(8000); // reenvio automático acontece 5 s depois de abrir
-  await painel.page.click('[data-aba="visao"]');
-  assert.equal(Number(await painel.page.textContent('#k-entregues')), e0 + 1, 'entrega continua registrada');
+  assert.equal(await contagem(painel.page), b0 + 3, 'reenvio não duplica participações');
 
   // 6) limpeza dos testes: senha errada não apaga; com senha 123 apaga painel e totens
   await painel.page.click('[data-aba="config"]');

@@ -13,7 +13,7 @@ const INATIVIDADE_MS = 150000;   // sem toques por 2,5 min: pergunta "Ainda est�
 const AVISO_S = 30;               // e espera mais 30 s antes de voltar ao início
 const RETOMAR_MS = 5 * 60000;     // fechou ou recarregou a tela: retoma de onde parou por até 5 min
 const RETOMAR_RESULTADO_MS = 3 * 60000;
-const VOLTA_RESULTADO_S = 20;
+const VOLTA_RESULTADO_S = 60; // tela final: 60 s para mostrar no balcão (ou toque em "Começar de novo")
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sorteio = (arr) => arr[(Math.random() * arr.length) | 0];
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -118,6 +118,7 @@ function mostrar(nome, { deMoto = false } = {}) {
   palco.calar();
   const opcAncora = { semAnel: nome === 'quiz' || nome === 'cadastro', balao: nome === 'descanso' ? undefined : 'cima' };
   if (deMoto && !palco.arrastando) { palco.irDeMoto($(ANCORAS[nome]), opcAncora); tocar('vrum'); } else { palco.desmontarMoto(); palco.irPara($(ANCORAS[nome]), opcAncora); }
+  if (antes !== nova) palco.entrarPeloLado();
   if (nome === 'descanso') iniciarDescanso(); else pararDescanso();
   if (nome === 'pausa') iniciarSono(); else pararSono();
   palco.espontaneo(ESPONTANEO[nome] || null);
@@ -178,7 +179,7 @@ const CENAS = [
     egon: () => { palco.acaoTemp('pensar', 4200); palco.expressaoTemp('pensando', 4200); palco.falar('Hmm... será que você acerta tudo?', 3800); } },
   { frase: 'Pode ir, <span class="ouro">estaremos lá!</span>', sub: 'Exclusive Gold. Proteção veicular de verdade.',
     egon: async () => { voo([[0.95, 0.2], [0.4, 0.14], [0.75, 0.24]], 'super', 1000); await espera(3300); palco.acaoTemp('joinha', 2200); palco.expressaoTemp('piscar', 2200); palco.falar('Exclusive Gold sempre com você!', 2600); } },
-  { frase: 'Bora pro <span class="ouro">Motofest!</span>', sub: 'Vem pro estande da Exclusive Gold testar o que você sabe.',
+  { frase: 'Bora pro <span class="ouro">Motofest!</span>', sub: 'Vem pro Stand da Exclusive Gold testar o que você sabe.',
     egon: () => cenaMoto() },
   { frase: '3 acertos finais = <span class="ouro">1 chopp</span>', sub: 'É rapidinho. Toque na tela para começar.',
     egon: async () => { palco.caneca(true, 0); palco.acao('segurar'); palco.expressao('coracao'); await espera(400); palco.nivelCaneca(1); palco.falar('Chopp gelado te esperando! 🍺', 3200); await espera(3600); palco.acaoTemp('brinde', 1600); await espera(1700); palco.caneca(false); palco.acao('idle'); palco.expressao('normal'); } },
@@ -585,7 +586,7 @@ async function avisoChopp() {
 }
 
 // ---------- resultado ----------
-let contagemTimer = null; let fogosTimer = null; let finalizado = false;
+let contagemTimer = null; let fogosTimer = null; let finalizado = false; let ganhouAgora = false;
 function finalizar() {
   if (finalizado) return; // nunca grava a mesma partida duas vezes nem gera dois cupons
   finalizado = true;
@@ -634,8 +635,13 @@ function mostrarResultado({ av, ganhou, esgotado, codigo, nomeCompleto, hora }, 
   if (!ganhou) modoOuro(false);
   if (ganhou) {
     $('#r-titulo').innerHTML = 'Parabéns, você ganhou <span class="ouro">um chopp!</span>';
-    $('#r-msg').textContent = `${nome}, mostre esta tela no balcão do estande Exclusive Gold e informe o código para retirar seu chopp.`;
-    $('#r-voucher-nome').textContent = nomeCompleto.split(' ').slice(0, 2).join(' ');
+    $('#r-msg').textContent = '';
+    // Primeiro e último nome (sem "de/da/dos"); se ainda não couber, a fonte diminui até caber.
+    const partes = nomeCompleto.split(/\s+/).filter((p) => p && !/^(d[aeo]s?|e)$/i.test(p));
+    const vNome = $('#r-voucher-nome');
+    vNome.textContent = partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : (partes[0] || nomeCompleto);
+    vNome.style.fontSize = '';
+    requestAnimationFrame(() => { for (let k = 0; k < 6 && vNome.scrollWidth > vNome.clientWidth + 1; k++) vNome.style.fontSize = `${parseFloat(getComputedStyle(vNome).fontSize) * 0.9}px`; });
     $('#r-voucher-hora').textContent = hora;
     $('#r-voucher-codigo').textContent = codigo;
   } else if (av.cumpriuRegra && esgotado) {
@@ -643,7 +649,8 @@ function mostrarResultado({ av, ganhou, esgotado, codigo, nomeCompleto, hora }, 
     $('#r-msg').textContent = 'Você acertou as perguntas que valiam chopp, mas os chopps desta ação já acabaram. Nossa equipe vai falar com você!';
   } else {
     $('#r-titulo').textContent = 'Ops, não foi dessa vez!';
-    $('#r-msg').textContent = `Você acertou ${av.acertosDecisivas} de ${av.totalDecisivas} perguntas que valiam chopp. Para ganhar, precisava acertar ${av.acertosNecessarios >= av.totalDecisivas ? `as ${av.totalDecisivas}` : av.acertosNecessarios}.`;
+    const erros = av.totalDecisivas - av.acertosDecisivas;
+    $('#r-msg').textContent = erros === 1 ? 'Confira a resposta certa:' : 'Confira as respostas certas:'; // o EGon já comenta o resultado no balão
     renderRevisao(av.respostas.filter((x) => x.valeChopp));
   }
   $('#r-acertos').textContent = '0';
@@ -668,11 +675,12 @@ function mostrarResultado({ av, ganhou, esgotado, codigo, nomeCompleto, hora }, 
     palco.caneca(false); palco.acao('idle'); palco.expressao('feliz'); palco.espontaneo(['pulinho', 'acenar', 'alongar']);
     setTimeout(() => { tocar('fim'); palco.acaoTemp('acenar', 2400); palco.falar(av.acertosDecisivas === av.totalDecisivas - 1 ? 'Foi por pouquinho! Na próxima vai!' : `Valeu por jogar, ${nome}!`, 2800); }, 650);
   }
+  ganhouAgora = ganhou;
+  $('#r-msg').hidden = !$('#r-msg').textContent;
 
-  let s = ganhou ? VOLTA_RESULTADO_S : VOLTA_RESULTADO_S + 15; // mais tempo para ler a correção
-  const totalS = s;
+  let s = VOLTA_RESULTADO_S;
   const anel = $('#r-anel');
-  const desenhar = () => { $('#r-contagem').textContent = s; anel.style.strokeDashoffset = String(106.8 * (1 - s / totalS)); };
+  const desenhar = () => { $('#r-contagem').textContent = s; anel.style.strokeDashoffset = String(106.8 * (1 - s / VOLTA_RESULTADO_S)); };
   desenhar();
   clearInterval(contagemTimer);
   contagemTimer = setInterval(() => { s -= 1; desenhar(); if (s <= 0) voltarInicio(); }, 1000);
@@ -704,6 +712,11 @@ function voltarInicio() {
 document.querySelectorAll('[data-acao="inicio"]').forEach((b) => b.addEventListener('click', (e) => {
   e.stopPropagation(); if (telaAtual === 'descanso') return; tocar('toque');
   if (telaAtual === 'cadastro' || telaAtual === 'quiz') registrarAbandono('cancelou');
+  // Quem ganhou confirma antes de sair: a tela com o cupom não volta depois.
+  if (telaAtual === 'resultado' && ganhouAgora) {
+    abrirModal('Já mostrou seu cupom?', 'Mostre esta tela no balcão do Stand antes de sair. Depois de começar de novo, ela não volta.', voltarInicio, { ok: 'Sim, começar de novo', cancelar: 'Voltar ao cupom' });
+    return;
+  }
   voltarInicio();
 }));
 
@@ -830,7 +843,7 @@ function abrirStatus() {
     ['Internet', navigator.onLine ? 'Conectado' : 'Sem conexão'],
     ['Participações neste tablet', leadsLocais().length],
     ['Aguardando envio', modoDemo ? '-' : pend],
-    ['Chopps entregues', `${stats.chopps}${Number(config.limiteChopps) ? ` de ${config.limiteChopps}` : ''}`],
+    ['Chopps ganhos', `${stats.chopps}${Number(config.limiteChopps) ? ` de ${config.limiteChopps}` : ''}`],
     ['Quiz', config.pausado ? 'Pausado' : 'Ativo'],
   ];
   $('#status-lista').innerHTML = itens.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');

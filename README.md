@@ -4,15 +4,15 @@ Quiz de segurança no trânsito para totem (tablet em paisagem) com captação d
 
 - **Totem:** `index.html`. Tela de descanso com o EGon em 3D, cadastro, quiz e resultado.
   O EGon é montado em código (Three.js) com rosto de LED no visor: olha para onde a pessoa toca, caminha, reage a toques, cócegas, abraço (segurar) e pode ser arrastado pela tela.
-- **Painel:** `painel.html`. Métricas ao vivo, participantes, entrega do chopp no balcão, Excel, resumo no WhatsApp e configurações (regras do jogo, banco de perguntas, limite de chopps, sons e pausa).
+- **Painel:** `painel.html`. Métricas ao vivo, participantes (quem ganhou e o código do cupom), Excel, resumo no WhatsApp e configurações simples (pausar o quiz, sons, limite de chopps e limpar dados de teste).
 
 ## Regra do chopp
 
 - Padrão: **5 perguntas** por partida. As **2 primeiras são de aquecimento** e não contam para o prêmio. As **3 últimas valem chopp** e é preciso **acertar as 3** para ganhar.
 - O resultado do prêmio usa só as perguntas que valem chopp. Acertar o aquecimento não compensa um erro na etapa decisiva, e errar o aquecimento não tira o prêmio.
-- Quem ganha recebe um cupom com código de 4 caracteres, mostrado no totem e na lista do painel, onde o balcão marca a entrega.
+- Quem ganha recebe um cupom com código de 4 caracteres, mostrado no totem e na lista do painel. Ganhou = chopp registrado, sem etapa extra de entrega.
 - Quem não ganha vê a correção das perguntas que valiam chopp: o que marcou e qual era a certa.
-- As quantidades (total, aquecimento, valendo chopp e acertos para ganhar) podem ser mudadas no painel, em **Configurações > Regras do jogo**. O painel só salva se aquecimento + valendo chopp = total.
+- A regra e o banco de perguntas são **fixos no sistema** (`src/regras.js` e `src/banco.js`): o painel não altera, para nada mudar sem querer durante o evento.
 
 ## Banco de perguntas e sorteio
 
@@ -23,10 +23,8 @@ O banco padrão tem 20 perguntas: as 5 do briefing do Motofest (PDF) e mais 15. 
 - embaralha as alternativas. A certa é identificada pela alternativa, não pela posição;
 - evita repetir os conjuntos de perguntas usados recentemente naquele tablet.
 
-Com o sorteio desligado, o totem usa as primeiras perguntas ativas do banco, na ordem, sem embaralhar.
-No painel dá para editar, desativar, remover e criar perguntas, e restaurar o banco padrão.
 
-Cada participação guarda: cadastro, data e hora, IDs das perguntas, alternativas mostradas, resposta escolhida, resposta certa, acertos no aquecimento, acertos valendo chopp, regras usadas, resultado, código do cupom e situação da entrega.
+Cada participação guarda: cadastro, data e hora, IDs das perguntas, alternativas mostradas, resposta escolhida, resposta certa, acertos no aquecimento, acertos valendo chopp, regras usadas, resultado e código do cupom.
 
 ## Como funciona o modo híbrido
 
@@ -54,7 +52,7 @@ Storage do Firebase não é usado.
 
 ## Roteiro do evento
 
-**Antes de abrir o estande**
+**Antes de abrir o Stand**
 1. Faça algumas partidas de teste em cada tablet (ganhando e perdendo).
 2. No painel, confira se elas apareceram. Depois vá em **Configurações > Limpar todos os dados**, baixe o Excel se quiser, digite a senha **123**, marque a confirmação e apague. Faça isso com os tablets ligados e com internet: eles apagam a cópia local sozinhos.
 3. Defina o limite de chopps, se houver.
@@ -77,11 +75,11 @@ O código fica em `src/`:
 - `totem.js` e `painel.js`: as telas; `data.js`: Firebase e modo demonstração.
 
 ```sh
-npm i firebase@11 xlsx three@0.169.0 esbuild
+npm i firebase@11 exceljs@4.4.0 three@0.169.0 esbuild
 sh build.sh          # roda os testes de regra e gera js/
 npm test             # testes de regra (sem dependências)
 npm i playwright-core && npm run test:e2e   # totem + painel no Chrome (1280x800, 1194x834 e celular)
-npm run test:sync    # evento simulado com a nuvem: online, offline, tablet desligado, entrega e limpeza
+npm run test:sync    # evento simulado com a nuvem: online, offline, tablet desligado, reenvio sem duplicar e limpeza
 ```
 
 O `test:sync` usa o emulador oficial do Firebase (`firebase emulators:start --project demo-quiz --only firestore,auth`, precisa de Java) com o `firestore.rules` do projeto, trocando o e-mail do painel por `painel@teste.com`.
