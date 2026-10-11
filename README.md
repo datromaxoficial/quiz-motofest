@@ -40,7 +40,7 @@ Sem o `config.js` preenchido, tudo roda em **modo demonstração**: os dados fic
 2. Em **Firestore Database**, crie o banco no modo produção.
 3. Em **Authentication > Método de login**, ative **E-mail/senha**. Em **Usuários**, crie o login do painel.
 4. Em **Configurações do projeto > Seus apps**, adicione um app **Web** e copie o `firebaseConfig` para o `config.js`. Esses valores são públicos por natureza; a proteção vem das regras do passo 5.
-5. Em **Firestore > Regras**, cole o conteúdo de `firestore.rules`, troque `SEU_EMAIL_DO_PAINEL@exemplo.com` pelo e-mail criado no passo 3 e publique.
+5. Em **Firestore > Regras**, cole o conteúdo de `firestore.rules`, confira se o e-mail do painel (hoje `quiz.exclusivegold@gmail.com`) é o mesmo criado no passo 3 e publique.
 6. Em **Authentication > Configurações > Domínios autorizados**, confira se o domínio do GitHub Pages (`datromaxoficial.github.io`) está na lista.
 
 Storage do Firebase não é usado.

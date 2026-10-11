@@ -1,9 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Troque pelo e-mail do usuário do painel (criado em Authentication).
+    // E-mails que entram no painel (usuários criados em Authentication > Usuários). Para adicionar outro: ["a@x.com", "b@y.com"].
     function admin() {
-      return request.auth != null && request.auth.token.email in ['SEU_EMAIL_DO_PAINEL@exemplo.com'];
+      return request.auth != null && request.auth.token.email in ['quiz.exclusivegold@gmail.com'];
     }
 
     // O totem só cria participações; ler e editar é só no painel.

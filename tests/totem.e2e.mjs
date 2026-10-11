@@ -32,6 +32,7 @@ after(async () => { await navegador?.close(); servidor?.close(); });
 
 async function abrirTotem(viewport, config) {
   const ctx = await navegador.newContext({ viewport });
+  await ctx.addInitScript('window.FORCAR_DEMO = true;'); // nunca grava no Firebase de produção
   const page = await ctx.newPage();
   const erros = []; page.on('pageerror', (e) => erros.push(String(e))); page.on('console', (m) => { if (m.type() === 'error') erros.push(m.text()); });
   await page.goto(`${base}/index.html`);

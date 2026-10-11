@@ -15,7 +15,8 @@ import { migrarConfig } from './banco.js';
 export const DEFAULT_CONFIG = migrarConfig(null);
 
 // Nos testes automáticos a nuvem é o emulador oficial do Firebase (window.FIREBASE_CONFIG_TESTE).
-const cfg = typeof window !== 'undefined' ? (window.FIREBASE_CONFIG_TESTE || window.FIREBASE_CONFIG) : null;
+// window.FORCAR_DEMO: testes automáticos que não podem tocar no Firebase de produção.
+const cfg = typeof window !== 'undefined' && !window.FORCAR_DEMO ? (window.FIREBASE_CONFIG_TESTE || window.FIREBASE_CONFIG) : null;
 export const modoDemo = !(cfg && cfg.apiKey && cfg.projectId);
 
 let db = null;
