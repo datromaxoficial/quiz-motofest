@@ -14,20 +14,26 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pw = process.env.PLAYWRIGHT_CORE ? await import(pathToFileURL(path.join(process.env.PLAYWRIGHT_CORE, 'index.mjs')).href) : await import('playwright-core');
 const { chromium } = pw;
 const CHROME = process.env.CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/opt/pw-browsers/chromium'].find((c) => existsSync(c));
+// Com FIREBASE_REAL (JSON do firebaseConfig) + PAINEL_EMAIL/PAINEL_SENHA o mesmo roteiro roda contra o Firebase de verdade
+// (ATENÇÃO: o passo 6 apaga todos os dados — só usar antes do evento).
+const REAL = process.env.FIREBASE_REAL ? JSON.parse(process.env.FIREBASE_REAL) : null;
 const EMU = '127.0.0.1';
-const PROJETO = 'demo-quiz';
-const ADMIN = { email: 'painel@teste.com', senha: 'senha-teste-123' };
+const PROJETO = REAL ? REAL.projectId : 'demo-quiz';
+const ADMIN = REAL ? { email: process.env.PAINEL_EMAIL, senha: process.env.PAINEL_SENHA } : { email: 'painel@teste.com', senha: 'senha-teste-123' };
 const TIPOS = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.json': 'application/json' };
 
 let servidor; let base; let navegador;
-const CONFIG_TESTE = `window.FIREBASE_CONFIG_TESTE = { apiKey: 'chave-de-teste', projectId: '${PROJETO}', authDomain: '${PROJETO}.firebaseapp.com', appId: '1:1:web:1' }; window.FIREBASE_EMULADOR = '${EMU}';`;
+const CONFIG_TESTE = REAL ? `window.FIREBASE_CONFIG_TESTE = ${JSON.stringify(REAL)};`
+  : `window.FIREBASE_CONFIG_TESTE = { apiKey: 'chave-de-teste', projectId: '${PROJETO}', authDomain: '${PROJETO}.firebaseapp.com', appId: '1:1:web:1' }; window.FIREBASE_EMULADOR = '${EMU}';`;
 
 before(async () => {
-  // zera o banco do emulador e cria o login do painel
+  // zera o banco do emulador e cria o login do painel (só no emulador)
+  if (!REAL) {
   await fetch(`http://${EMU}:8080/emulator/v1/projects/${PROJETO}/databases/(default)/documents`, { method: 'DELETE' });
   await fetch(`http://${EMU}:9099/emulator/v1/projects/${PROJETO}/accounts`, { method: 'DELETE' });
   const r = await fetch(`http://${EMU}:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=chave-de-teste`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: ADMIN.email, password: ADMIN.senha, returnSecureToken: true }) });
   assert.equal(r.status, 200, 'criar usuário do painel no emulador');
+  }
   servidor = http.createServer(async (req, res) => {
     const arq = path.join(RAIZ, decodeURIComponent(new URL(req.url, 'http://x').pathname));
     try { const dados = await readFile(arq.endsWith(path.sep) ? path.join(arq, 'index.html') : arq); res.writeHead(200, { 'content-type': TIPOS[path.extname(arq)] || 'application/octet-stream' }); res.end(dados); } catch { res.writeHead(404); res.end(); }
@@ -84,15 +90,19 @@ async function jogar(page, plano, whats) {
 
 test('evento completo: online, sem internet, desligado, painel ao vivo, entrega e limpeza', async () => {
   const painel = await abrirPainel();
-  assert.equal(await contagem(painel.page), 0);
+  await painel.page.waitForTimeout(3000);
+  const b0 = await contagem(painel.page);
+  const c0 = await painel.page.evaluate(() => Number(document.getElementById('k-chopps').textContent));
+  const e0 = Number(await painel.page.textContent('#k-entregues'));
+  const espera = (n) => painel.page.waitForFunction((v) => Number(document.getElementById('k-total').textContent) === v, b0 + n, { timeout: 40000 });
 
   // 1) tablet com internet: ganha o chopp e o painel recebe na hora
   const tablet = await novoContexto();
   let totem = await abrirTotem(tablet);
   const l1 = await jogar(totem, [1, 1, 1, 1, 1], '11900000001');
   assert.equal(l1.ganhouChopp, true);
-  await painel.page.waitForFunction(() => Number(document.getElementById('k-total').textContent) === 1, null, { timeout: 15000 });
-  await painel.page.waitForFunction(() => Number(document.getElementById('k-chopps').textContent) === 1, null, { timeout: 15000 });
+  await espera(1);
+  await painel.page.waitForFunction((v) => Number(document.getElementById('k-chopps').textContent) === v, c0 + 1, { timeout: 15000 });
 
   // 2) tablet sem internet: a participação fica guardada e aparece como pendente
   await totem.click('#tela-resultado [data-acao="inicio"]'); await totem.waitForSelector('#tela-descanso.ativa');
@@ -100,12 +110,12 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   const l2 = await jogar(totem, [1, 1, 1, 0, 1], '11900000002');
   assert.equal(l2.ganhouChopp, false);
   await totem.waitForTimeout(2500);
-  assert.equal(await contagem(painel.page), 1, 'sem internet o painel ainda não recebeu');
+  assert.equal(await contagem(painel.page), b0 + 1, 'sem internet o painel ainda não recebeu');
   assert.ok(await totem.evaluate(() => JSON.parse(localStorage.getItem('eg_leads')).filter((l) => !l._sync).length) >= 1, 'pendente no tablet');
 
   // 3) volta a internet: sincroniza sozinho
   await tablet.setOffline(false);
-  await painel.page.waitForFunction(() => Number(document.getElementById('k-total').textContent) === 2, null, { timeout: 30000 });
+  await espera(2);
   await totem.waitForFunction(() => JSON.parse(localStorage.getItem('eg_leads')).every((l) => l._sync), null, { timeout: 30000 });
 
   // 4) sem internet + tablet desligado (página fechada) antes de sincronizar; religa com internet
@@ -115,7 +125,7 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   await totem.close();
   await tablet.setOffline(false);
   totem = await abrirTotem(tablet);
-  await painel.page.waitForFunction(() => Number(document.getElementById('k-total').textContent) === 3, null, { timeout: 40000 });
+  await espera(3);
 
   // 5) balcão entrega o chopp; reenvio do tablet nunca desfaz a entrega
   await painel.page.click('[data-aba="participantes"]');
@@ -126,14 +136,14 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, entrega 
   await totem.reload(); await totem.waitForFunction(() => window.__egon);
   await totem.waitForTimeout(8000); // reenvio automático acontece 5 s depois de abrir
   await painel.page.click('[data-aba="visao"]');
-  assert.equal(await painel.page.textContent('#k-entregues'), '1', 'entrega continua registrada');
+  assert.equal(Number(await painel.page.textContent('#k-entregues')), e0 + 1, 'entrega continua registrada');
 
   // 6) limpeza dos testes: senha errada não apaga; com senha 123 apaga painel e totens
   await painel.page.click('[data-aba="config"]');
   await painel.page.click('#c-limpar');
   await painel.page.fill('#limpar-senha', '999'); await painel.page.check('#limpar-ciente'); await painel.page.click('#limpar-confirmar');
   assert.match(await painel.page.textContent('#limpar-erro'), /senha incorreta/i);
-  assert.equal(await contagem(painel.page), 3);
+  assert.equal(await contagem(painel.page), b0 + 3);
   // um tablet que ficou offline com um teste antigo na fila...
   const tablet2 = await novoContexto(); const totem2 = await abrirTotem(tablet2);
   await tablet2.setOffline(true);

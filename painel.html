@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#00142F">
 <title>Painel do Quiz</title>
 <link rel="icon" href="assets/icone.png">
-<link rel="stylesheet" href="css/painel.css?v=20261011165639">
+<link rel="stylesheet" href="css/painel.css?v=20261011172718">
 </head>
 <body>
 <header class="topo">
@@ -26,6 +26,8 @@
       <label>Senha<input type="password" id="l-senha" autocomplete="current-password" required></label>
       <p class="erro" id="l-erro"></p>
       <button class="btn primario" type="submit">Entrar</button>
+      <button type="button" class="link" id="l-esqueci">Esqueci minha senha</button>
+      <p class="info">Você entra uma vez neste aparelho e o painel fica conectado.</p>
     </form>
   </section>
 
@@ -34,6 +36,7 @@
       <button role="tab" data-aba="visao" aria-selected="true">Visão geral</button>
       <button role="tab" data-aba="participantes" aria-selected="false">Participantes <span id="cont-part" class="pilula">0</span></button>
       <button role="tab" data-aba="config" aria-selected="false">Configurações</button>
+      <button role="tab" data-aba="ajuda" aria-selected="false">Ajuda</button>
     </nav>
 
     <!-- VISÃO GERAL -->
@@ -145,6 +148,45 @@
         <button class="btn primario" id="c-salvar">Salvar alterações</button>
       </div>
     </div>
+    <!-- AJUDA -->
+    <div class="aba" id="aba-ajuda" hidden>
+      <div class="ajuda">
+        <div class="cartao">
+          <h2>Entregar o chopp no balcão</h2>
+          <ol>
+            <li>O ganhador mostra a tela do totem com o <b>código de 4 letras</b> (ex.: HLCG).</li>
+            <li>Aqui no painel, abra <b>Participantes</b> e escolha o filtro <b>Chopp a entregar</b> (ou busque pelo código).</li>
+            <li>Confira o nome e toque em <b>Entregar</b>. Errou? Toque em "Entregue" para desfazer.</li>
+          </ol>
+        </div>
+        <div class="cartao">
+          <h2>Antes de abrir o estande</h2>
+          <ol>
+            <li>Abra o totem em cada tablet com internet e use "Adicionar à tela inicial" no Chrome.</li>
+            <li>Faça algumas partidas de teste (ganhando e perdendo) e confira se aparecem aqui.</li>
+            <li>Em <b>Configurações</b>, toque em <b>Limpar todos os dados</b> (senha <b>123</b>) com os tablets ligados e com internet.</li>
+            <li>Se houver estoque limitado, defina o <b>limite de chopps</b>.</li>
+          </ol>
+        </div>
+        <div class="cartao">
+          <h2>Durante os 3 dias</h2>
+          <ul>
+            <li>O totem funciona <b>com ou sem internet</b>. Sem internet ele guarda as participações e envia sozinho quando a conexão voltar.</li>
+            <li>Toque 5 vezes no logo do totem para ver o status: <b>Aguardando envio</b> mostra o que ainda não chegou aqui. No fim do dia, deixe o tablet com internet até ficar 0.</li>
+            <li>Nunca limpe os dados do navegador do tablet durante o evento.</li>
+            <li>Para pausar o quiz (ex.: acabou o chopp), use <b>Pausar o quiz</b> em Configurações.</li>
+          </ul>
+        </div>
+        <div class="cartao">
+          <h2>Relatórios</h2>
+          <ul>
+            <li><b>Baixar Excel</b>: participantes, resumo, prospects (não associados com placa), placas repetidas e desistências.</li>
+            <li><b>Enviar resumo no WhatsApp</b>: os números principais em uma mensagem.</li>
+            <li><b>Prospects</b> são não associados que informaram placa: ótimos contatos para oferecer a proteção veicular.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -168,6 +210,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="js/painel.js?v=20261011165639"></script>
+<script type="module" src="js/painel.js?v=20261011172718"></script>
 </body>
 </html>

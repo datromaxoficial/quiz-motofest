@@ -188,3 +188,8 @@ button.tag.entregue { border: 0; cursor: pointer; font: inherit; font-size: 12px
 .dlg-caixa h2 { color: #FF6B70; }
 .ciente { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 700; }
 .dlg-acoes { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* login e ajuda */
+#l-esqueci { align-self: center; font-size: 14px; }
+.ajuda { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.ajuda ol, .ajuda ul { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.45; margin-top: 10px; }
