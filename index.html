@@ -11,7 +11,7 @@
 <link rel="icon" href="assets/icone.png">
 <link rel="preload" href="assets/fonts/archivo-latin-900-italic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/archivo-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/totem.css?v=20261011162019">
+<link rel="stylesheet" href="css/totem.css?v=20261011165639">
 </head>
 <body class="carregando">
 
@@ -30,6 +30,10 @@
   <symbol id="i-whats" viewBox="0 0 24 24"><path d="M4.2 20l1.1-4A8.4 8.4 0 1 1 8.6 19z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8.4c.3-.6.7-.6 1-.6l.6.1 1 2.2-.6.9c.5 1 1.3 1.8 2.3 2.3l.9-.6 2.2 1 .1.6c0 .3 0 .7-.6 1-2.6 1.4-7.4-3.4-6.9-6.9z" fill="currentColor"/></symbol>
   <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 2.8l7.5 2.8v5.8c0 4.6-3.1 8.5-7.5 9.9-4.4-1.4-7.5-5.3-7.5-9.9V5.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 12l2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-chopp" viewBox="0 0 24 24"><path d="M5.5 8.5h10v10.2a2.3 2.3 0 0 1-2.3 2.3H7.8a2.3 2.3 0 0 1-2.3-2.3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15.5 10.5h1.7a2.3 2.3 0 0 1 2.3 2.3v1.4a2.3 2.3 0 0 1-2.3 2.3h-1.7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 8.6a2.6 2.6 0 0 1 2-4.2 3 3 0 0 1 5.4-.6 2.4 2.4 0 0 1 3.6 2.4 1.9 1.9 0 0 1-.4 2.4" fill="currentColor"/><path d="M9 12v5.5M12 12v5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".55"/></symbol>
+  <symbol id="i-pergunta" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.9" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-cadeado" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-sem-veiculo" viewBox="0 0 24 24"><circle cx="6" cy="16" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="16" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 16l4-6h5l3 6M13.5 6h2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-caneca" viewBox="0 0 200 220">
     <path d="M142 82h16a28 28 0 0 1 28 28v36a28 28 0 0 1-28 28h-16" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="15"/>
     <rect x="28" y="52" width="116" height="152" rx="20" fill="url(#g-cerveja)"/>
@@ -99,12 +103,16 @@
         <span class="campo-rotulo">WhatsApp com DDD</span>
         <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
       </label>
-      <label class="campo campo-placa" data-campo="placa">
-        <span class="placa-faixa"><i></i>BRASIL<i></i></span>
-        <input id="f-placa" name="placa" type="text" autocapitalize="characters" enterkeyhint="done" maxlength="8" placeholder="ABC1D23">
-        <span class="campo-rotulo">Placa da moto</span>
-        <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
-      </label>
+      <div class="placa-bloco">
+        <label class="campo campo-placa" data-campo="placa">
+          <span class="placa-faixa"><i></i>BRASIL<i></i></span>
+          <input id="f-placa" name="placa" type="text" autocapitalize="characters" enterkeyhint="done" maxlength="8" placeholder="ABC1D23">
+          <span class="placa-motivo" id="placa-motivo"></span>
+          <span class="campo-rotulo">Placa da moto</span>
+          <span class="campo-ok"><svg><use href="#i-check"/></svg></span>
+        </label>
+        <button type="button" class="placa-sem" id="placa-sem"><svg><use href="#i-pergunta"/></svg><span id="placa-sem-txt">Não sei a placa / não tenho veículo</span></button>
+      </div>
     </div>
     <div class="campo-assoc" data-campo="assoc">
       <span class="assoc-pergunta">Você já é associado Exclusive Gold?</span>
@@ -203,7 +211,34 @@
   <div class="modal-caixa">
     <h3 id="modal-titulo">Você já jogou!</h3>
     <p id="modal-texto">Pode jogar de novo. Boa sorte nessa rodada!</p>
-    <button class="btn-principal" id="modal-ok">Bora jogar<svg><use href="#i-seta"/></svg></button>
+    <div class="modal-acoes">
+      <button class="btn-secundario" id="modal-cancelar" hidden>Corrigir</button>
+      <button class="btn-principal" id="modal-ok"><span id="modal-ok-txt">Bora jogar</span><svg><use href="#i-seta"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- SEM PLACA: opções -->
+<div class="modal" id="folha-placa" role="dialog" aria-modal="true" hidden>
+  <div class="modal-caixa folha-caixa">
+    <h3>Sem a placa agora?</h3>
+    <p>Tudo bem! Escolha o que combina com você e siga para o quiz.</p>
+    <div class="folha-opcoes">
+      <button type="button" data-motivo="nao-lembra"><span class="fo-icone"><svg><use href="#i-pergunta"/></svg></span><span class="fo-texto"><b>Não lembro a placa</b><small>A equipe confirma com você depois, pelo WhatsApp.</small></span></button>
+      <button type="button" data-motivo="sem-veiculo"><span class="fo-icone"><svg><use href="#i-sem-veiculo"/></svg></span><span class="fo-texto"><b>Não tenho veículo</b><small>Você joga do mesmo jeito e concorre ao chopp.</small></span></button>
+      <button type="button" data-motivo="nao-informar"><span class="fo-icone"><svg><use href="#i-cadeado"/></svg></span><span class="fo-texto"><b>Prefiro não informar</b><small>Sem problema, respeitamos sua escolha.</small></span></button>
+    </div>
+    <button type="button" class="link-voltar" id="folha-voltar">Voltar e digitar a placa</button>
+  </div>
+</div>
+
+<!-- AINDA ESTÁ AÍ? -->
+<div class="modal" id="ainda-ai" role="dialog" aria-modal="true" hidden>
+  <div class="modal-caixa">
+    <span class="ainda-icone"><svg><use href="#i-relogio"/></svg></span>
+    <h3>Ainda está aí?</h3>
+    <p>Sem toques há um tempinho. Voltando ao início em <b id="ainda-ai-seg">30</b>s.</p>
+    <button class="btn-principal" id="ainda-ai-ok">Estou aqui!<svg><use href="#i-check"/></svg></button>
   </div>
 </div>
 
@@ -223,6 +258,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="js/totem.js?v=20261011162019"></script>
+<script type="module" src="js/totem.js?v=20261011165639"></script>
 </body>
 </html>

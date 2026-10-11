@@ -1,7 +1,7 @@
 import { utils, writeFile } from 'xlsx';
 import {
   modoDemo, DEFAULT_CONFIG, observarConfig, salvarConfig, observarStats, zerarChopps,
-  observarLeads, observarLogin, entrar, sair, marcarEntregue,
+  observarLeads, observarLogin, entrar, sair, marcarEntregue, limparTudo,
 } from './data.js';
 import { normalizarRegras, validarRegras, validarPergunta } from './regras.js';
 import { BANCO_PADRAO } from './banco.js';
@@ -13,7 +13,16 @@ const linkWhats = (d, texto) => `https://wa.me/55${d}${texto ? `?text=${encodeUR
 const dataHora = (t) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
-let leads = [];
+let leads = [];        // participações completas (base de todas as métricas)
+let incompletos = [];  // desistências: preencheu algo e não terminou
+let todosLeads = [];
+// Participações feitas antes da última limpeza (testes) nunca contam, mesmo que um tablet offline as envie depois.
+function separarLeads() {
+  const corte = Number(config.limpezaEm) || 0;
+  const validos = todosLeads.filter((x) => (x.clientTime || 0) >= corte);
+  leads = validos.filter((x) => x.status !== 'incompleto');
+  incompletos = validos.filter((x) => x.status === 'incompleto');
+}
 let config = DEFAULT_CONFIG;
 let stats = { chopps: 0 };
 let rascunho = null;      // cópia editável da config
@@ -47,6 +56,19 @@ const acertosAq = (l) => l.acertosAquecimento ?? (l.respostas || []).filter((r) 
 const totalAq = (l) => l.totalAquecimento ?? (l.respostas || []).filter((r) => !r.valeChopp).length;
 const idResposta = (r) => r.id || (BANCO_PADRAO.find((b) => b.texto.slice(0, 40) === String(r.texto || '').slice(0, 40))?.id) || `txt:${r.texto}`;
 
+// ---------- placas (nicho de seguro: placas repetidas e não associados com veículo) ----------
+const STATUS_PLACA = { 'nao-lembra': 'não lembra', 'sem-veiculo': 'sem veículo', 'nao-informar': 'não informou', incompleta: 'incompleta', vazia: '—' };
+const statusPlaca = (l) => (l.placa ? 'informada' : (l.placaStatus || 'vazia'));
+function mapaPlacas() {
+  const m = new Map();
+  leads.forEach((l) => { if (l.placa) m.set(l.placa, [...(m.get(l.placa) || []), l]); });
+  return m;
+}
+let placasCache = new Map();
+const vezesPlaca = (l) => (l.placa ? (placasCache.get(l.placa) || []).length : 0);
+const ehProspect = (l) => !l.associado && !!l.placa;
+const fmtMotivo = (m) => ({ inatividade: 'ficou sem tocar', cancelou: 'tocou em cancelar/sair', 'saiu da tela': 'fechou ou saiu da tela' }[m] || m || '');
+
 // ---------- métricas ----------
 function metricas() {
   const total = leads.length;
@@ -56,11 +78,20 @@ function metricas() {
   const assoc = leads.filter((l) => l.associado).length;
   const resp = leads.flatMap((l) => l.respostas || []);
   const acertos = resp.filter((r) => r.acertou).length;
-  return { total, unicos, chopps, entregues, pendentes: chopps - entregues, assoc, naoAssoc: total - assoc, acertoMedio: pct(acertos, resp.length) };
+  const repetidas = [...placasCache.values()].filter((ls) => ls.length > 1);
+  const prospects = leads.filter(ehProspect).length;
+  const semPlaca = leads.filter((l) => !l.placa).length;
+  return { total, unicos, chopps, entregues, pendentes: chopps - entregues, assoc, naoAssoc: total - assoc, acertoMedio: pct(acertos, resp.length),
+    placasRepetidas: repetidas.length, prospects, semPlaca, desistencias: incompletos.length };
 }
 
 function render() {
+  placasCache = mapaPlacas();
   const m = metricas();
+  $('#k-prospects').textContent = m.prospects;
+  $('#k-prospects-n').textContent = `não associados com veículo · ${m.semPlaca} sem placa`;
+  $('#k-repetidas').textContent = m.placasRepetidas;
+  $('#k-desist').textContent = m.desistencias;
   $('#cont-part').textContent = m.total;
   $('#k-total').textContent = m.total;
   $('#k-unicos').textContent = `${m.unicos} ${m.unicos === 1 ? 'pessoa' : 'pessoas'}`;
@@ -119,7 +150,11 @@ $('#filtro').addEventListener('change', tabela);
 function filtrados() {
   const q = $('#busca').value.trim().toLowerCase();
   const f = $('#filtro').value;
-  return leads.filter((l) => {
+  const base = f === 'incompletos' ? incompletos : leads;
+  return base.filter((l) => {
+    if (f === 'prospects' && !ehProspect(l)) return false;
+    if (f === 'placa-repetida' && vezesPlaca(l) < 2) return false;
+    if (f === 'sem-placa' && l.placa) return false;
     if (f === 'chopp' && !l.ganhouChopp) return false;
     if (f === 'pendente' && !(l.ganhouChopp && !l.entregue)) return false;
     if (f === 'assoc' && !l.associado) return false;
@@ -134,12 +169,29 @@ function tabela() {
   const ls = filtrados();
   $('#vazio').hidden = ls.length > 0;
   $('#tabela').innerHTML = ls.map((l) => {
-    const msg = `Olá, ${l.nome.split(' ')[0]}! Aqui é da Exclusive Gold. Obrigado por participar do nosso quiz no Motofest!`;
+    const incompleto = l.status === 'incompleto';
+    const msg = incompleto
+      ? `Olá, ${(l.nome || '').split(' ')[0]}! Aqui é da Exclusive Gold. Vimos que você começou nosso quiz no Motofest. Quer terminar e concorrer ao chopp?`
+      : `Olá, ${(l.nome || '').split(' ')[0]}! Aqui é da Exclusive Gold. Obrigado por participar do nosso quiz no Motofest!`;
+    const vezes = vezesPlaca(l);
+    const placaCel = l.placa
+      ? `<span class="placa-mini">${esc(l.placa)}</span>${vezes > 1 ? `<span class="tag alerta" title="Placa usada em ${vezes} participações">repetida ×${vezes}</span>` : ''}`
+      : `<span class="tag">${esc(STATUS_PLACA[statusPlaca(l)] || '—')}</span>`;
+    if (incompleto) {
+      return `<tr class="linha-incompleta">
+      <td>${dataHora(l.clientTime)}</td>
+      <td>${l.nome ? esc(l.nome) : '<i class="sub-tab">sem autorização LGPD</i>'}<span class="tag alerta">desistiu</span></td>
+      <td>${l.whatsapp ? `<a href="${linkWhats(l.whatsapp, msg)}" target="_blank" rel="noopener">${fmtWhats(l.whatsapp)}</a>` : '—'}</td>
+      <td>${placaCel}</td>
+      <td>${l.associado ? '<span class="tag sim">Sim</span>' : 'Não'}</td>
+      <td colspan="3"><small class="sub-tab">Parou em: ${esc(l.etapa || '')} · ${esc(fmtMotivo(l.motivo))}</small></td>
+    </tr>`;
+    }
     return `<tr>
       <td>${dataHora(l.clientTime)}</td>
-      <td>${esc(l.nome)}${l.repetido ? '<span class="tag">jogou de novo</span>' : ''}</td>
+      <td>${esc(l.nome)}${l.repetido ? '<span class="tag">jogou de novo</span>' : ''}${ehProspect(l) ? '<span class="tag prospect" title="Não associado e com veículo">prospect</span>' : ''}</td>
       <td><a href="${linkWhats(l.whatsapp, msg)}" target="_blank" rel="noopener">${fmtWhats(l.whatsapp)}</a></td>
-      <td>${esc(l.placa)}</td>
+      <td>${placaCel}</td>
       <td>${l.associado ? '<span class="tag sim">Sim</span>' : 'Não'}</td>
       <td><b>${acertosDec(l)}/${totalDec(l)}</b> <small class="sub-tab">valendo chopp</small><br><small class="sub-tab">aquec. ${acertosAq(l)}/${totalAq(l)}</small></td>
       <td>${l.ganhouChopp ? `<span class="tag chopp">🍺 Ganhou</span>${l.codigo ? `<span class="cupom">${esc(l.codigo)}</span>` : ''}` : l.choppEsgotado ? 'Acertou (esgotado)' : '-'}</td>
@@ -166,7 +218,11 @@ function exportar() {
     const linha = {
       Data: d.toLocaleDateString('pt-BR'), Hora: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       Nome: l.nome, WhatsApp: fmtWhats(l.whatsapp), 'Link WhatsApp': linkWhats(l.whatsapp),
-      'Associado EG': l.associado ? 'Sim' : 'Não', Placa: l.placa,
+      'Associado EG': l.associado ? 'Sim' : 'Não', Placa: l.placa || '',
+      'Situação da placa': l.placa ? 'informada' : (STATUS_PLACA[statusPlaca(l)] || ''),
+      'Placa usada (vezes)': l.placa ? vezesPlaca(l) : '',
+      'Placa confirmada como repetida': l.placaRepetida ? 'Sim' : '',
+      Prospect: ehProspect(l) ? 'Sim' : '',
       'Acertos aquecimento': `${acertosAq(l)}/${totalAq(l)}`,
       'Acertos valendo chopp': `${acertosDec(l)}/${totalDec(l)}`,
       'Ganhou chopp': l.ganhouChopp ? 'Sim' : l.choppEsgotado ? 'Acertou (esgotado)' : 'Não',
@@ -191,14 +247,25 @@ function exportar() {
     [`Regra: ${r.totalPerguntas} perguntas (${r.aquecimento} de aquecimento + ${r.decisivas} valendo chopp). Ganha quem acerta ${r.acertosParaGanhar} de ${r.decisivas}.`], [],
     ['Participações', m.total], ['Pessoas diferentes', m.unicos], ['Chopps ganhos', stats.chopps],
     ['Chopps entregues', m.entregues], ['Cupons aguardando entrega', m.pendentes],
-    ['Associados EG', `${m.assoc} (${pct(m.assoc, m.total)}%)`], ['Não associados', m.naoAssoc], ['Acerto médio', `${m.acertoMedio}%`], [],
+    ['Associados EG', `${m.assoc} (${pct(m.assoc, m.total)}%)`], ['Não associados', m.naoAssoc], ['Acerto médio', `${m.acertoMedio}%`],
+    ['Prospects (não associados com placa)', m.prospects], ['Participações sem placa', m.semPlaca], ['Placas usadas por mais de uma pessoa', m.placasRepetidas], ['Desistências', m.desistencias], [],
     ['Pergunta', 'Acerto', 'Vezes respondida'],
     ...estatisticaPerguntas().map((e) => [`#${e.pos >= 0 ? e.pos + 1 : '?'} ${e.texto}`, `${pct(e.ok, e.n)}%`, e.n]),
   ]);
   resumo['!cols'] = [{ wch: 80 }, { wch: 12 }, { wch: 16 }];
+  const repetidas = [...placasCache.entries()].filter(([, ls]) => ls.length > 1).sort((a, b) => b[1].length - a[1].length)
+    .map(([placa, ls]) => ({ Placa: placa, Vezes: ls.length, Nomes: ls.map((l) => l.nome).join(' / '), WhatsApps: ls.map((l) => fmtWhats(l.whatsapp)).join(' / '), 'Algum associado?': ls.some((l) => l.associado) ? 'Sim' : 'Não' }));
+  const prospects = leads.filter(ehProspect).sort((a, b) => a.clientTime - b.clientTime)
+    .map((l) => ({ Data: new Date(l.clientTime).toLocaleString('pt-BR'), Nome: l.nome, WhatsApp: fmtWhats(l.whatsapp), 'Link WhatsApp': linkWhats(l.whatsapp), Placa: l.placa, 'Placa usada (vezes)': vezesPlaca(l), 'Ganhou chopp': l.ganhouChopp ? 'Sim' : 'Não' }));
+  const desist = [...incompletos].sort((a, b) => a.clientTime - b.clientTime)
+    .map((l) => ({ Data: new Date(l.clientTime).toLocaleString('pt-BR'), 'Parou em': l.etapa || '', Motivo: fmtMotivo(l.motivo), Nome: l.nome || '', WhatsApp: fmtWhats(l.whatsapp), Placa: l.placa || '', 'Situação da placa': l.placa ? 'informada' : (STATUS_PLACA[l.placaStatus] || ''), 'Associado EG': l.associado ? 'Sim' : 'Não', 'Autorizou LGPD': l.lgpd ? 'Sim' : 'Não' }));
+  const aba = (linhas, aviso) => utils.json_to_sheet(linhas.length ? linhas : [{ Aviso: aviso }]);
   const wb = utils.book_new();
   utils.book_append_sheet(wb, ws, 'Participantes');
   utils.book_append_sheet(wb, resumo, 'Resumo');
+  utils.book_append_sheet(wb, aba(prospects, 'Nenhum não associado com placa ainda'), 'Prospects');
+  utils.book_append_sheet(wb, aba(repetidas, 'Nenhuma placa repetida'), 'Placas repetidas');
+  utils.book_append_sheet(wb, aba(desist, 'Nenhuma desistência'), 'Desistências');
   const hoje = new Date().toISOString().slice(0, 10);
   writeFile(wb, `quiz-exclusive-gold-${hoje}.xlsx`);
 }
@@ -213,6 +280,9 @@ $('#btn-resumo').addEventListener('click', () => {
     `Chopps entregues: ${m.entregues} (aguardando: ${m.pendentes})`,
     `Associados EG: ${m.assoc} (${pct(m.assoc, m.total)}%)`,
     `Não associados: ${m.total - m.assoc}`,
+    `Prospects (não associados com placa): ${m.prospects}`,
+    `Placas repetidas: ${m.placasRepetidas}`,
+    `Desistências: ${m.desistencias}`,
     `Acerto médio: ${m.acertoMedio}%`,
     '',
     `Painel: ${location.href.split('#')[0]}`,
@@ -363,6 +433,28 @@ $('#c-salvar').addEventListener('click', async () => {
   } catch { toast('Não foi possível salvar. Verifique a conexão.'); }
 });
 
+// Limpar tudo (para apagar os testes antes do evento). Senha 123 + confirmação, para não apagar sem querer.
+const SENHA_LIMPAR = '123';
+function abrirLimpeza() {
+  $('#limpar-senha').value = ''; $('#limpar-ciente').checked = false; $('#limpar-erro').textContent = '';
+  $('#limpar-resumo').textContent = `${leads.length} participações, ${incompletos.length} desistências e ${Math.max(stats.chopps, 0)} chopps no contador.`;
+  $('#dlg-limpar').hidden = false; setTimeout(() => $('#limpar-senha').focus(), 50);
+}
+$('#c-limpar').addEventListener('click', abrirLimpeza);
+$('#limpar-cancelar').addEventListener('click', () => { $('#dlg-limpar').hidden = true; });
+$('#limpar-excel').addEventListener('click', exportar);
+$('#limpar-confirmar').addEventListener('click', async () => {
+  const erro = $('#limpar-erro');
+  if ($('#limpar-senha').value !== SENHA_LIMPAR) { erro.textContent = 'Senha incorreta.'; $('#limpar-senha').select(); return; }
+  if (!$('#limpar-ciente').checked) { erro.textContent = 'Marque a confirmação de que entende que tudo será apagado.'; return; }
+  const b = $('#limpar-confirmar'); b.disabled = true; b.textContent = 'Apagando...';
+  try {
+    const n = await limparTudo(config);
+    $('#dlg-limpar').hidden = true; toast(`Pronto: ${n} registros apagados. Os totens também vão limpar a cópia local.`);
+  } catch (e) { console.error(e); erro.textContent = 'Não foi possível apagar. Verifique a conexão e tente de novo.'; }
+  b.disabled = false; b.textContent = 'Apagar tudo';
+});
+
 $('#c-zerar').addEventListener('click', async () => {
   if (!confirm('Zerar o contador de chopps ganhos? As participações continuam salvas.')) return;
   try { await zerarChopps(); toast('Contador zerado.'); } catch { toast('Não foi possível zerar.'); }
@@ -374,7 +466,7 @@ observarLogin((u) => {
   $('#login').hidden = !!u; $('#app').hidden = !u;
   $('#btn-sair').hidden = !u || modoDemo; $('#ao-vivo').hidden = !u || modoDemo;
   if (!u) return;
-  desligar.push(observarLeads((l) => { leads = l; render(); }));
+  desligar.push(observarLeads((l) => { todosLeads = l; separarLeads(); render(); }));
   desligar.push(observarStats((s) => { stats = s; render(); }));
-  desligar.push(observarConfig((c) => { config = c; if (!editando) carregarRascunho(); render(); }));
+  desligar.push(observarConfig((c) => { config = c; if (!editando) carregarRascunho(); separarLeads(); render(); }));
 });

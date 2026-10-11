@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#00142F">
 <title>Painel do Quiz</title>
 <link rel="icon" href="assets/icone.png">
-<link rel="stylesheet" href="css/painel.css?v=20261011162019">
+<link rel="stylesheet" href="css/painel.css?v=20261011165639">
 </head>
 <body>
 <header class="topo">
@@ -47,6 +47,9 @@
         <div class="kpi ouro"><span>Chopps ganhos</span><strong id="k-chopps">0</strong><small id="k-estoque">sem limite</small><div class="barra"><i id="k-barra"></i></div></div>
         <div class="kpi"><span>Chopps entregues</span><strong id="k-entregues">0</strong><small id="k-pendentes">nenhum cupom pendente</small></div>
         <div class="kpi"><span>Associados EG</span><strong id="k-assoc">0%</strong><small id="k-assoc-n">0 de 0</small></div>
+        <div class="kpi"><span>Prospects</span><strong id="k-prospects">0</strong><small id="k-prospects-n">não associados com veículo</small></div>
+        <div class="kpi"><span>Placas repetidas</span><strong id="k-repetidas">0</strong><small>usadas por mais de uma pessoa</small></div>
+        <div class="kpi"><span>Desistências</span><strong id="k-desist">0</strong><small>começaram e não terminaram</small></div>
         <div class="kpi"><span>Acerto médio</span><strong id="k-acerto">0%</strong><small id="k-acerto-n">das respostas</small></div>
       </div>
       <div class="graficos">
@@ -71,6 +74,10 @@
           <option value="pendente">Chopp a entregar</option>
           <option value="assoc">Associados</option>
           <option value="nao-assoc">Não associados</option>
+          <option value="prospects">Prospects (não associados com placa)</option>
+          <option value="placa-repetida">Placas repetidas</option>
+          <option value="sem-placa">Sem placa</option>
+          <option value="incompletos">Desistências</option>
         </select>
         <button class="btn primario" data-exportar>⬇ Baixar Excel</button>
       </div>
@@ -102,6 +109,11 @@
             <input type="number" id="c-limite" min="0" step="1">
           </label>
           <p class="info">Chopps já ganhos: <strong id="c-ganhos">0</strong> <button class="link" id="c-zerar">Zerar contador</button></p>
+          <div class="zona-perigo">
+            <strong>Limpar dados de teste</strong>
+            <small>Apaga todas as participações, desistências, cupons e contadores, no painel e nos totens. Use antes do evento começar.</small>
+            <button class="btn perigo" id="c-limpar">Limpar todos os dados</button>
+          </div>
         </div>
         <div class="cartao" id="c-regras">
           <h2>Regras do jogo</h2>
@@ -138,7 +150,24 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<!-- Confirmação de limpeza -->
+<div class="dlg" id="dlg-limpar" hidden>
+  <div class="dlg-caixa cartao">
+    <h2>Apagar todos os dados?</h2>
+    <p>Isso apaga <b>definitivamente</b> <span id="limpar-resumo"></span> Não dá para desfazer.</p>
+    <p class="info">Dica: baixe o Excel antes, por segurança. Faça a limpeza com os tablets ligados e com internet.</p>
+    <button class="btn" id="limpar-excel">⬇ Baixar Excel antes</button>
+    <label class="campo">Senha de confirmação<input type="password" id="limpar-senha" inputmode="numeric" autocomplete="off"></label>
+    <label class="ciente"><input type="checkbox" id="limpar-ciente"> Entendo que todos os dados serão apagados</label>
+    <p class="erro" id="limpar-erro"></p>
+    <div class="dlg-acoes">
+      <button class="btn" id="limpar-cancelar">Cancelar</button>
+      <button class="btn perigo" id="limpar-confirmar">Apagar tudo</button>
+    </div>
+  </div>
+</div>
+
 <script src="config.js"></script>
-<script type="module" src="js/painel.js?v=20261011162019"></script>
+<script type="module" src="js/painel.js?v=20261011165639"></script>
 </body>
 </html>

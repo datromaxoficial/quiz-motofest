@@ -17,6 +17,15 @@ service cloud.firestore {
       allow read, delete: if admin();
     }
 
+    // Contador de uso por placa (para avisar "essa placa já foi registrada"). Só número, sem dado pessoal.
+    match /placas/{placa} {
+      allow get: if true;
+      allow list: if admin();
+      allow create: if request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
+      allow update: if request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
+      allow delete: if admin();
+    }
+
     // Perguntas, limite de chopps e pausa: todos leem, só o painel altera.
     match /config/{doc} {
       allow read: if true;

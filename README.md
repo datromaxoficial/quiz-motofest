@@ -50,7 +50,23 @@ Storage do Firebase não é usado.
 1. Abra o endereço do totem no Chrome, com internet, uma vez.
 2. No menu do Chrome, escolha **Adicionar à tela inicial**. Abrindo pelo ícone, ele já entra em tela cheia.
 3. Toque na tela para começar. O totem entra em tela cheia e mantém a tela ligada.
-4. **Status escondido:** toque 5 vezes rápido no logo para ver a conexão, os envios pendentes, ligar ou desligar o som e sair da tela cheia.
+4. **Status escondido:** toque 5 vezes rápido no logo para ver a conexão, os envios pendentes, ligar/desligar o som e sair da tela cheia.
+
+## Roteiro do evento
+
+**Antes de abrir o estande**
+1. Faça algumas partidas de teste em cada tablet (ganhando e perdendo).
+2. No painel, confira se elas apareceram. Depois vá em **Configurações > Limpar todos os dados**, baixe o Excel se quiser, digite a senha **123**, marque a confirmação e apague. Faça isso com os tablets ligados e com internet: eles apagam a cópia local sozinhos.
+3. Defina o limite de chopps, se houver.
+
+**Durante o evento (3 dias)**
+- O totem funciona com ou sem internet. Sem internet, cada participação fica guardada no tablet e é enviada sozinha quando a conexão volta (e o totem tenta de novo a cada minuto).
+- Se a tela fechar ou o tablet reiniciar no meio de uma partida, ao abrir de novo ele continua de onde parou (até 5 minutos; o cupom do resultado fica disponível por 3 minutos).
+- No status escondido, **Aguardando envio** mostra quantas participações ainda não chegaram na nuvem. Ao fim de cada dia, ligue a internet até esse número ficar em 0.
+- **Nunca** limpe os dados do navegador do tablet nem desinstale o Chrome durante o evento: é ali que ficam as participações que ainda não foram enviadas.
+
+**Depois do evento**
+- No painel, **Baixar Excel** traz tudo: participantes, resumo, prospects (não associados com placa), placas repetidas e desistências.
 
 ## Desenvolvimento
 
@@ -64,5 +80,8 @@ O código fica em `src/`:
 npm i firebase@11 xlsx three@0.169.0 esbuild
 sh build.sh          # roda os testes de regra e gera js/
 npm test             # testes de regra (sem dependências)
-npm i playwright-core && npm run test:e2e   # totem + painel no Chrome, em 1280x800 e 1194x834
+npm i playwright-core && npm run test:e2e   # totem + painel no Chrome (1280x800, 1194x834 e celular)
+npm run test:sync    # evento simulado com a nuvem: online, offline, tablet desligado, entrega e limpeza
 ```
+
+O `test:sync` usa o emulador oficial do Firebase (`firebase emulators:start --project demo-quiz --only firestore,auth`, precisa de Java) com o `firestore.rules` do projeto, trocando o e-mail do painel por `painel@teste.com`.

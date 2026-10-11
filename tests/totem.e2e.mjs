@@ -171,3 +171,62 @@ test('caso 14: painel valida e salva as regras, e o totem passa a usar', async (
   assert.equal(leads.at(-1).ganhouChopp, true, '3 de 4 ganha com a regra salva');
   await ctx.close();
 });
+
+test('placa: "não sei a placa" conta como resolvido e vai para o relatório', async () => {
+  const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
+  await page.click('#tela-descanso', { position: { x: 200, y: 600 } });
+  await page.waitForSelector('#tela-cadastro.ativa');
+  await page.fill('#f-nome', 'Sem Placa Teste'); await page.fill('#f-whats', '11955550000');
+  await page.click('#placa-sem'); await page.waitForSelector('#folha-placa:not([hidden])');
+  await page.click('[data-motivo="nao-lembra"]');
+  assert.match(await page.textContent('#placa-motivo'), /não lembro/i);
+  await page.click('#f-assoc [data-v="nao"]'); await page.click('.lgpd');
+  assert.equal(await page.textContent('#btn-comecar-txt'), 'Começar o quiz');
+  await page.click('#btn-comecar');
+  await page.waitForFunction(() => window.__quiz.partida().length && document.querySelector('#tela-quiz.ativa'));
+  await page.click('#tela-quiz [data-acao="inicio"]'); // desiste no quiz
+  const l = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads'))[0]);
+  assert.equal(l.status, 'incompleto'); assert.equal(l.placa, ''); assert.equal(l.placaStatus, 'nao-lembra'); assert.equal(l.motivo, 'cancelou');
+  await ctx.close();
+});
+
+test('placa já registrada: pede confirmação, permite corrigir e marca a participação', async () => {
+  const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
+  await page.evaluate(() => localStorage.setItem('eg_leads', JSON.stringify([{ id: 'a', nome: 'Amigo', whatsapp: '11911112222', placa: 'ABC1D23', respostas: [], clientTime: Date.now(), _sync: true }])));
+  await page.click('#tela-descanso', { position: { x: 200, y: 600 } });
+  await page.waitForSelector('#tela-cadastro.ativa');
+  await page.fill('#f-nome', 'Outra Pessoa'); await page.fill('#f-whats', '11933334444'); await page.fill('#f-placa', 'ABC1D23');
+  await page.click('#f-assoc [data-v="sim"]'); await page.click('.lgpd'); await page.click('#btn-comecar');
+  await page.waitForSelector('#modal:not([hidden])');
+  assert.match(await page.textContent('#modal-titulo'), /placa já foi registrada/i);
+  await page.click('#modal-cancelar'); // corrigir
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'f-placa');
+  await page.click('#btn-comecar'); await page.waitForSelector('#modal:not([hidden])');
+  await page.click('#modal-ok'); // confirma que é essa placa
+  await page.waitForFunction(() => window.__quiz.partida().length && document.querySelector('#tela-quiz.ativa'));
+  const sess = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_sessao')));
+  assert.equal(sess.jogador.placaRepetida, true);
+  await ctx.close();
+});
+
+test('retoma de onde parou depois de recarregar a página (cadastro e quiz)', async () => {
+  const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
+  await page.click('#tela-descanso', { position: { x: 200, y: 600 } });
+  await page.waitForSelector('#tela-cadastro.ativa');
+  await page.fill('#f-nome', 'Volta Depois'); await page.fill('#f-whats', '11966667777');
+  await page.waitForTimeout(500);
+  await page.reload(); await page.waitForSelector('#tela-cadastro.ativa');
+  assert.equal(await page.inputValue('#f-nome'), 'Volta Depois');
+  await page.fill('#f-placa', 'XYZ9A88'); await page.click('#f-assoc [data-v="nao"]'); await page.click('.lgpd'); await page.click('#btn-comecar');
+  await page.waitForFunction(() => document.querySelector('#tela-quiz.ativa') && document.querySelectorAll('#q-opcoes .opcao').length);
+  await page.waitForTimeout(900);
+  const q = await page.evaluate(() => window.__quiz.partida()[0]);
+  await page.click(`#q-opcoes .opcao:nth-child(${q.correta + 1})`);
+  await page.waitForTimeout(600);
+  const antes = await page.evaluate(() => window.__quiz.partida().map((x) => x.id));
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#tela-quiz.ativa') && document.querySelector('#q-num').textContent === '02', null, { timeout: 15000 });
+  assert.deepEqual(await page.evaluate(() => window.__quiz.partida().map((x) => x.id)), antes);
+  assert.equal(await page.evaluate(() => document.querySelector('#progresso li').className.includes('certo')), true);
+  await ctx.close();
+});

@@ -4,17 +4,18 @@
 // Sem config, roda em modo demonstração usando só o localStorage deste navegador.
 import { initializeApp } from 'firebase/app';
 import {
-  initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  doc, setDoc, updateDoc, onSnapshot, collection, query, orderBy, increment, serverTimestamp,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator,
+  doc, setDoc, updateDoc, getDoc, getDocs, writeBatch, onSnapshot, collection, query, orderBy, increment, serverTimestamp,
 } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, connectAuthEmulator } from 'firebase/auth';
 
 import { migrarConfig } from './banco.js';
 
 // Configuração padrão: regras do jogo (5 perguntas, 2 de aquecimento, 3 valendo chopp, acertar as 3) e banco com 20 perguntas.
 export const DEFAULT_CONFIG = migrarConfig(null);
 
-const cfg = typeof window !== 'undefined' ? window.FIREBASE_CONFIG : null;
+// Nos testes automáticos a nuvem é o emulador oficial do Firebase (window.FIREBASE_CONFIG_TESTE).
+const cfg = typeof window !== 'undefined' ? (window.FIREBASE_CONFIG_TESTE || window.FIREBASE_CONFIG) : null;
 export const modoDemo = !(cfg && cfg.apiKey && cfg.projectId);
 
 let db = null;
@@ -22,15 +23,19 @@ let auth = null;
 if (!modoDemo) {
   const app = initializeApp(cfg);
   db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }),
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
   auth = getAuth(app);
+  if (window.FIREBASE_EMULADOR) {
+    connectFirestoreEmulator(db, window.FIREBASE_EMULADOR, 8080);
+    connectAuthEmulator(auth, `http://${window.FIREBASE_EMULADOR}:9099`, { disableWarnings: true });
+  }
 }
 
 // ---------- utilidades locais ----------
-const LS = { leads: 'eg_leads', config: 'eg_config', stats: 'eg_stats' };
+const LS = { leads: 'eg_leads', config: 'eg_config', stats: 'eg_stats', limpeza: 'eg_limpeza' };
 const ler = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* cheio ou bloqueado */ } };
+const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
 
 export const uid = () =>
   (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -50,7 +55,7 @@ export function observarConfig(cb) {
     return () => ouvintes.delete(f);
   }
   return onSnapshot(doc(db, 'config', 'quiz'),
-    (s) => cb(mesclarConfig(s.exists() ? s.data() : null)),
+    (s) => { const d = s.exists() ? s.data() : null; if (d) gravar(LS.config, d); cb(mesclarConfig(d || ler(LS.config, null))); },
     () => cb(mesclarConfig(ler(LS.config, null))));
 }
 
@@ -79,11 +84,28 @@ export async function zerarChopps() {
 }
 
 // ---------- leads ----------
-// Backup local de tudo que o totem capturou (nunca é apagado pelo app).
+// Backup local de tudo que o totem capturou. Enquanto não chega na nuvem fica completo;
+// depois de confirmado, vira um resumo pequeno (para o tablet não lotar a memória em 3 dias de evento).
 export const leadsLocais = () => ler(LS.leads, []);
+const resumoLocal = (l) => ({ id: l.id, status: l.status, whatsapp: l.whatsapp, placa: l.placa, nome: l.nome, ganhouChopp: l.ganhouChopp, clientTime: l.clientTime, _sync: true });
 
-export function jaJogou(whatsapp, placa) {
-  return leadsLocais().some((l) => (whatsapp && l.whatsapp === whatsapp) || (placa && l.placa === placa));
+const completos = () => leadsLocais().filter((l) => l.status !== 'incompleto');
+
+// Mesmo WhatsApp já terminou uma partida neste tablet.
+export function jaJogou(whatsapp) {
+  return completos().some((l) => whatsapp && l.whatsapp === whatsapp);
+}
+
+// Placa já usada por outra participação (neste tablet ou, com a nuvem ligada, em qualquer totem).
+// Na nuvem só existe um contador por placa: nenhum dado pessoal é lido pelo totem.
+export async function placaJaRegistrada(placa) {
+  if (!placa) return false;
+  if (completos().some((l) => l.placa === placa)) return true;
+  if (modoDemo) return false;
+  try {
+    const s = await Promise.race([getDoc(doc(db, 'placas', placa)), new Promise((_, rej) => setTimeout(rej, 1800))]);
+    return s.exists() && (s.data().n || 0) > 0;
+  } catch { return false; }
 }
 
 export function pendentes() {
@@ -92,35 +114,43 @@ export function pendentes() {
 
 function marcarSincronizado(id) {
   const ls = leadsLocais();
-  const l = ls.find((x) => x.id === id);
-  if (l) { l._sync = true; gravar(LS.leads, ls); }
+  const i = ls.findIndex((x) => x.id === id);
+  if (i >= 0) { ls[i] = resumoLocal(ls[i]); gravar(LS.leads, ls); }
 }
 
 export function salvarLead(lead) {
   const ls = leadsLocais();
   ls.push({ ...lead, _sync: modoDemo });
-  gravar(LS.leads, ls);
+  if (!gravar(LS.leads, ls) && !modoDemo) {
+    // memória do navegador cheia: compacta o que já está na nuvem e tenta de novo
+    gravar(LS.leads, ls.map((l) => (l._sync ? resumoLocal(l) : l)));
+  }
   if (modoDemo) {
     if (lead.ganhouChopp) gravar(LS.stats, { chopps: (ler(LS.stats, { chopps: 0 }).chopps || 0) + 1 });
     avisar();
     return;
   }
-  // Sem await: offline o Firestore guarda na fila e envia quando a conexão voltar.
+  // Sem await: offline o Firestore guarda na fila (no próprio tablet) e envia quando a conexão voltar.
   setDoc(doc(db, 'leads', lead.id), { ...lead, createdAt: serverTimestamp() })
     .then(() => marcarSincronizado(lead.id))
     .catch((e) => console.warn('lead não enviado', e));
+  if (lead.placa && lead.status !== 'incompleto') {
+    setDoc(doc(db, 'placas', lead.placa), { n: increment(1) }, { merge: true }).catch(() => {});
+  }
   if (lead.ganhouChopp) {
     setDoc(doc(db, 'stats', 'main'), { chopsGiven: increment(1) }, { merge: true })
       .catch((e) => console.warn('contador não enviado', e));
   }
 }
 
-// Reenvia leads que ficaram só no backup local (ex.: cache do navegador limpo antes de sincronizar).
+// Reenvia o que ainda não teve confirmação da nuvem (ex.: tablet desligado antes de sincronizar).
+// Nunca reenvia a situação da entrega: quem manda nisso é o balcão (painel).
 export function reenviarPendentes() {
   if (modoDemo) return;
-  leadsLocais().filter((l) => !l._sync).forEach((l) => {
-    const { _sync, ...dados } = l;
-    setDoc(doc(db, 'leads', l.id), { ...dados, createdAt: serverTimestamp() }, { merge: true })
+  const corte = Number(ler(LS.limpeza, 0)) || 0;
+  leadsLocais().filter((l) => !l._sync && (l.clientTime || 0) >= corte).forEach((l) => {
+    const { _sync, entregue, entregueEm, ...dados } = l;
+    setDoc(doc(db, 'leads', l.id), dados, { merge: true })
       .then(() => marcarSincronizado(l.id))
       .catch(() => {});
   });
@@ -141,9 +171,46 @@ export function observarLeads(cb) {
     f(); ouvintes.add(f);
     return () => ouvintes.delete(f);
   }
-  return onSnapshot(query(collection(db, 'leads'), orderBy('clientTime', 'desc')),
+  return onSnapshot(query(collection(db, 'leads'), orderBy('clientTime', 'desc')), { includeMetadataChanges: false },
     (s) => cb(s.docs.map((d) => d.data())),
     (e) => { console.error(e); cb([]); });
+}
+
+// ---------- limpar dados de teste (painel, com senha) ----------
+// Apaga participações, contador de chopps e contador de placas, e avisa os totens (config.limpezaEm)
+// para apagarem também a cópia local. Participações feitas antes da limpeza que chegarem depois
+// (tablet que estava offline) são ignoradas pelo painel e não são reenviadas pelos totens.
+export async function limparTudo(configAtual) {
+  const limpezaEm = Date.now();
+  if (modoDemo) {
+    const n = leadsLocais().length;
+    gravar(LS.leads, []); gravar(LS.stats, { chopps: 0 }); gravar(LS.limpeza, limpezaEm);
+    gravar(LS.config, { ...ler(LS.config, {}), limpezaEm });
+    avisar();
+    return n;
+  }
+  let apagados = 0;
+  for (const nome of ['leads', 'placas']) {
+    const snap = await getDocs(collection(db, nome));
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const lote = writeBatch(db);
+      snap.docs.slice(i, i + 400).forEach((d) => lote.delete(d.ref));
+      await lote.commit();
+    }
+    if (nome === 'leads') apagados = snap.size;
+  }
+  await setDoc(doc(db, 'stats', 'main'), { chopsGiven: 0 });
+  await salvarConfig({ ...configAtual, limpezaEm });
+  return apagados;
+}
+
+// Totem: aplica uma limpeza feita no painel (uma vez por limpeza).
+export function aplicarLimpeza(limpezaEm) {
+  if (!limpezaEm || Number(ler(LS.limpeza, 0)) >= limpezaEm) return false;
+  gravar(LS.leads, leadsLocais().filter((l) => (l.clientTime || 0) >= limpezaEm));
+  gravar(LS.limpeza, limpezaEm);
+  if (modoDemo) gravar(LS.stats, { chopps: 0 });
+  return true;
 }
 
 // ---------- login do painel ----------

@@ -1,6 +1,6 @@
 import {
-  modoDemo, observarConfig, observarStats, salvarLead, jaJogou, uid,
-  pendentes, reenviarPendentes, leadsLocais,
+  modoDemo, observarConfig, observarStats, salvarLead, jaJogou, placaJaRegistrada, uid,
+  pendentes, reenviarPendentes, leadsLocais, aplicarLimpeza,
 } from './data.js';
 import { Palco } from './palco.js';
 import { Fundo, Efeitos } from './fx.js';
@@ -9,7 +9,10 @@ import { normalizarRegras, sortearPartida, avaliar, gerarCodigo, chaveConjunto, 
 
 const $ = (s) => document.querySelector(s);
 const LETRAS = 'ABCD';
-const INATIVIDADE_MS = 60000;
+const INATIVIDADE_MS = 150000;   // sem toques por 2,5 min: pergunta "Ainda está aí?"
+const AVISO_S = 30;               // e espera mais 30 s antes de voltar ao início
+const RETOMAR_MS = 5 * 60000;     // fechou ou recarregou a tela: retoma de onde parou por até 5 min
+const RETOMAR_RESULTADO_MS = 3 * 60000;
 const VOLTA_RESULTADO_S = 20;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sorteio = (arr) => arr[(Math.random() * arr.length) | 0];
@@ -269,6 +272,9 @@ const soDigitos = (v) => v.replace(/\D/g, '');
 const primeiroNome = (n) => n.trim().split(' ')[0];
 const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 let associado = null;
+let placaStatus = 'vazia'; // 'informada' | 'nao-lembra' | 'sem-veiculo' | 'nao-informar'
+let restaurando = false;   // repondo um cadastro salvo: sem falas nem sons
+const MOTIVOS_PLACA = { 'nao-lembra': 'Não lembro', 'sem-veiculo': 'Sem veículo', 'nao-informar': 'Não informada' };
 const valido = { nome: false, whats: false, placa: false, assoc: false, lgpd: false };
 const perguntou = {};
 
@@ -279,6 +285,7 @@ function novoJogo() {
   delete fAssoc.dataset.v;
   document.querySelectorAll('.invalido, .campo.ok').forEach((e) => e.classList.remove('invalido', 'ok'));
   Object.keys(valido).forEach((k) => { valido[k] = false; perguntou[k] = false; });
+  limparSemPlaca(); placaStatus = 'vazia';
   atualizarMedidor();
   $('#form').style.transform = '';
   palco.acao('idle'); palco.expressao('normal'); palco.caneca(false);
@@ -298,13 +305,43 @@ function marcar(campo, ok, el) {
   const antes = valido[campo]; valido[campo] = ok;
   el?.classList.toggle('ok', ok); el?.classList.remove('invalido');
   atualizarMedidor();
-  if (ok && !antes) { tocar('escolha'); comemorarCampo(campo); }
+  if (ok && !antes && !restaurando) { tocar('escolha'); comemorarCampo(campo); }
 }
 function comemorarCampo(campo) {
   if (campo === 'nome') { clearTimeout(marcar.tNome); marcar.tNome = setTimeout(() => { if (!valido.nome) return; palco.gesto('pulo'); palco.expressaoTemp('feliz', 1800); palco.falar(`Prazer, ${capitalizar(primeiroNome(fNome.value))}! 😄`, 2200); }, 700); }
   if (campo === 'whats') { palco.acaoTemp('joinha', 1600); palco.expressaoTemp('piscar', 1600); palco.falar('Anotado! 📱', 1800); }
   if (campo === 'placa') { palco.gesto('pulo'); palco.expressaoTemp('estrela', 1500); palco.falar('Placa anotada! 🏍️', 1800); }
 }
+
+// Sem placa: não lembra, não tem veículo ou prefere não informar. Conta como campo resolvido.
+function definirSemPlaca(motivo) {
+  placaStatus = motivo; fPlaca.value = '';
+  const c = fPlaca.closest('.campo'); c.classList.add('sem-placa', 'ok'); c.classList.remove('invalido');
+  $('#placa-motivo').textContent = MOTIVOS_PLACA[motivo];
+  $('#placa-sem-txt').textContent = 'Tenho a placa, quero digitar';
+  valido.placa = true; atualizarMedidor(); salvarSessao();
+  if (restaurando) return;
+  tocar('escolha');
+  if (motivo === 'nao-lembra') { palco.expressaoTemp('piscar', 2000); palco.falar('Sem problema! A gente confere depois 😉', 2600); }
+  if (motivo === 'sem-veiculo') { palco.acaoTemp('joinha', 1800); palco.expressaoTemp('feliz', 2000); palco.falar('Quando tiver, já sabe quem protege! 🛡️', 2800); }
+  if (motivo === 'nao-informar') { palco.expressaoTemp('feliz', 1800); palco.falar('Tranquilo, sem pressão!', 2200); }
+}
+function limparSemPlaca() {
+  const c = fPlaca.closest('.campo'); const estava = c.classList.contains('sem-placa');
+  c.classList.remove('sem-placa'); $('#placa-sem-txt').textContent = 'Não sei a placa / não tenho veículo';
+  if (estava) { placaStatus = 'vazia'; c.classList.remove('ok'); valido.placa = false; atualizarMedidor(); }
+}
+$('#placa-sem').addEventListener('click', () => {
+  if (fPlaca.closest('.campo').classList.contains('sem-placa')) { limparSemPlaca(); fPlaca.focus(); return; }
+  document.activeElement?.blur(); $('#folha-placa').hidden = false; tocar('toque');
+  palco.olharPara(innerWidth / 2, innerHeight / 2, 2500);
+});
+$('#folha-placa').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-motivo]');
+  if (b) { $('#folha-placa').hidden = true; definirSemPlaca(b.dataset.motivo); return; }
+  if (e.target.closest('#folha-voltar') || e.target === $('#folha-placa')) { $('#folha-placa').hidden = true; limparSemPlaca(); fPlaca.focus(); }
+});
+fPlaca.addEventListener('focus', () => limparSemPlaca());
 function atualizarMedidor() {
   const n = Object.values(valido).filter(Boolean).length;
   $('#medidor').querySelectorAll('i').forEach((i, k) => i.classList.toggle('on', k < n));
@@ -316,10 +353,14 @@ function atualizarMedidor() {
 
 fNome.addEventListener('input', () => marcar('nome', fNome.value.trim().replace(/\s+/g, ' ').length >= 3, fNome.closest('.campo')));
 fWhats.addEventListener('input', () => { fWhats.value = mascaraWhats(fWhats.value); const n = soDigitos(fWhats.value).length; marcar('whats', n >= 10 && n <= 11, fWhats.closest('.campo')); });
-fPlaca.addEventListener('input', () => { fPlaca.value = fPlaca.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7); marcar('placa', PLACA_OK.test(fPlaca.value), fPlaca.closest('.campo')); });
+fPlaca.addEventListener('input', () => {
+  fPlaca.value = fPlaca.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
+  const ok = PLACA_OK.test(fPlaca.value); placaStatus = ok ? 'informada' : 'vazia';
+  marcar('placa', ok, fPlaca.closest('.campo'));
+});
 $('#f-lgpd').addEventListener('change', (e) => {
-  valido.lgpd = e.target.checked; atualizarMedidor(); $('.lgpd').classList.remove('invalido');
-  if (e.target.checked) { tocar('escolha'); palco.acaoTemp('joinha', 1400); palco.expressaoTemp('feliz', 1400); palco.falar('Combinado! 🤝', 1600); }
+  valido.lgpd = e.target.checked; atualizarMedidor(); $('.lgpd').classList.remove('invalido'); salvarSessao();
+  if (e.target.checked && !restaurando) { tocar('escolha'); palco.acaoTemp('joinha', 1400); palco.expressaoTemp('feliz', 1400); palco.falar('Combinado! 🤝', 1600); }
 });
 fNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fWhats.focus(); } });
 fWhats.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fPlaca.focus(); } });
@@ -337,7 +378,9 @@ fAssoc.addEventListener('click', (e) => {
   associado = b.dataset.v; fAssoc.dataset.v = associado;
   fAssoc.querySelectorAll('button').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
   $('.campo-assoc').classList.remove('invalido');
-  const antes = valido.assoc; valido.assoc = true; atualizarMedidor(); if (!antes) tocar('escolha');
+  const antes = valido.assoc; valido.assoc = true; atualizarMedidor(); salvarSessao();
+  if (restaurando) return;
+  if (!antes) tocar('escolha');
   if (associado === 'sim') { palco.expressaoTemp('coracao', 2000); palco.acaoTemp('abraco', 1400); palco.falar('Que bom ter você com a gente! 💙', 2200); const r = b.getBoundingClientRect(); fx.coracoes(r.left + r.width / 2, r.top, 6); }
   else { palco.expressaoTemp('piscar', 1800); palco.acaoTemp('joinha', 1600); palco.falar('Bora conhecer a Exclusive Gold! 😉', 2200); }
 });
@@ -374,20 +417,35 @@ $('#form').addEventListener('submit', (e) => {
     return;
   }
   document.activeElement?.blur();
-  jogador = { nome, whatsapp: whats, placa, associado: associado === 'sim', lgpd: $('#f-lgpd').checked, repetido: jaJogou(whats, placa) };
+  const comPlaca = placaStatus === 'informada';
+  jogador = {
+    nome, whatsapp: whats, placa: comPlaca ? placa : '', placaStatus: comPlaca ? 'informada' : placaStatus, placaRepetida: false,
+    associado: associado === 'sim', lgpd: $('#f-lgpd').checked, repetido: jaJogou(whats),
+  };
   palco.acaoTemp('comemorar', 1200); palco.expressaoTemp('estrela', 1200); palco.falar('Bora pro quiz! 🚀', 1400); tocar('certo');
-  setTimeout(() => {
+  const checaPlaca = comPlaca && !jogador.repetido ? placaJaRegistrada(placa) : Promise.resolve(false);
+  Promise.all([checaPlaca, espera(1100)]).then(([placaUsada]) => {
+    if (telaAtual !== 'cadastro') return;
     if (jogador.repetido) {
       palco.expressaoTemp('surpreso', 1600); palco.falar('Você de novo? Que bom! 😄', 2200);
       abrirModal(`Você já jogou, ${capitalizar(primeiroNome(nome))}!`, 'Pode jogar de novo. Boa sorte nessa rodada!', () => iniciarQuiz());
+    } else if (placaUsada) {
+      // Placa de amigo ou familiar pode: só confirmamos. O painel marca essas placas para a Exclusive Gold.
+      palco.expressaoTemp('curioso', 2600); palco.falar('Hmm, essa placa já passou por aqui!', 2600); tocar('suspense');
+      abrirModal('Essa placa já foi registrada', `A placa ${placa} já apareceu em outra participação. Pode ser de um amigo ou familiar, tudo bem! Ela é mesmo a do veículo que você usa?`,
+        () => { jogador.placaRepetida = true; iniciarQuiz(); },
+        { ok: 'Sim, é essa placa', cancelar: 'Corrigir a placa', aoCancelar: () => { fPlaca.focus(); fPlaca.select(); palco.falar('Beleza, corrige aí!', 1800); } });
     } else iniciarQuiz();
-  }, 1100);
+  });
 });
 
-function abrirModal(titulo, texto, aoFechar) {
+function abrirModal(titulo, texto, aoFechar, { ok = 'Bora jogar', cancelar = '', aoCancelar } = {}) {
   $('#modal-titulo').textContent = titulo; $('#modal-texto').textContent = texto;
+  $('#modal-ok-txt').textContent = ok;
+  const bc = $('#modal-cancelar'); bc.hidden = !cancelar; bc.textContent = cancelar;
   const m = $('#modal'); m.hidden = false;
   $('#modal-ok').onclick = () => { m.hidden = true; tocar('escolha'); aoFechar?.(); };
+  bc.onclick = () => { m.hidden = true; tocar('toque'); aoCancelar?.(); };
 }
 
 // ---------- quiz ----------
@@ -412,16 +470,21 @@ function iniciarQuiz() {
   partida = sortearPartida(config.banco, regras, { recentes: lerRecentes() });
   guardarRecente(partida.map((q) => q.id));
   escolhas = []; atual = 0; choppPerdido = false; errosDecisivas = 0; finalizado = false; modoOuro(false);
+  montarProgresso();
+  palco.acao('pensar'); palco.expressao('pensando');
+  mostrar('quiz', { deMoto: true });
+  salvarSessao();
+  $('#q-texto').innerHTML = ''; $('#q-opcoes').innerHTML = '';
+  setTimeout(renderPergunta, 350);
+}
+function montarProgresso() {
   const ol = $('#progresso'); ol.innerHTML = '';
   partida.forEach((p, i) => {
     const li = document.createElement('li'); li.textContent = i + 1;
     if (p.valeChopp) { li.classList.add('chopp'); li.insertAdjacentHTML('beforeend', '<svg class="mini-chopp"><use href="#i-chopp"/></svg>'); }
+    if (escolhas[i] !== undefined) li.classList.add(escolhas[i] === p.correta ? 'certo' : 'errado');
     ol.appendChild(li);
   });
-  palco.acao('pensar'); palco.expressao('pensando');
-  mostrar('quiz', { deMoto: true });
-  $('#q-texto').innerHTML = ''; $('#q-opcoes').innerHTML = '';
-  setTimeout(renderPergunta, 350);
 }
 
 function renderPergunta() {
@@ -458,7 +521,7 @@ async function responder(i, botao) {
   if (travado || telaAtual !== 'quiz') return; travado = true;
   clearTimeout(dicaTimer); armarInatividade();
   const p = perguntas()[atual];
-  escolhas[atual] = i;
+  escolhas[atual] = i; salvarSessao();
   const ok = i === p.correta; // só para a reação na tela; o prêmio é calculado em avaliar()
   const bts = [...$('#q-opcoes').querySelectorAll('.opcao')];
   botao.classList.add('escolhida'); tocar('suspense');
@@ -555,8 +618,13 @@ function finalizar() {
   };
   salvarLead(lead);
   if (ganhou) stats.chopps += 1; // otimista, o snapshot corrige
+  const dados = { av, ganhou, esgotado, codigo, nomeCompleto: jogador.nome, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+  salvarSessao({ dados });
+  mostrarResultado(dados);
+}
 
-  const nome = capitalizar(primeiroNome(jogador.nome));
+function mostrarResultado({ av, ganhou, esgotado, codigo, nomeCompleto, hora }, retomado = false) {
+  const nome = capitalizar(primeiroNome(nomeCompleto));
   const tela = $('#tela-resultado');
   tela.classList.toggle('vitoria', av.cumpriuRegra);
   tela.classList.toggle('derrota', !av.cumpriuRegra);
@@ -567,8 +635,8 @@ function finalizar() {
   if (ganhou) {
     $('#r-titulo').innerHTML = 'Parabéns, você ganhou <span class="ouro">um chopp!</span>';
     $('#r-msg').textContent = `${nome}, mostre esta tela no balcão do estande Exclusive Gold e informe o código para retirar seu chopp.`;
-    $('#r-voucher-nome').textContent = jogador.nome.split(' ').slice(0, 2).join(' ');
-    $('#r-voucher-hora').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    $('#r-voucher-nome').textContent = nomeCompleto.split(' ').slice(0, 2).join(' ');
+    $('#r-voucher-hora').textContent = hora;
     $('#r-voucher-codigo').textContent = codigo;
   } else if (av.cumpriuRegra && esgotado) {
     $('#r-titulo').textContent = `Mandou bem, ${nome}!`;
@@ -586,8 +654,9 @@ function finalizar() {
 
   palco.aoPousar = null;
   if (ganhou) {
+    if (ganhou) modoOuro(true);
     palco.caneca(true, 1); palco.acao('dancar'); palco.expressao('estrela');
-    setTimeout(() => { tocar('vitoria'); fx.canhao(-1); fx.canhao(1); palco.falar(`Saúde, ${nome}! 🍻`, 3200); }, 650);
+    setTimeout(() => { tocar('vitoria'); fx.canhao(-1); fx.canhao(1); palco.falar(retomado ? `Seu cupom continua aqui, ${nome}! 🍻` : `Saúde, ${nome}! 🍻`, 3200); }, 650);
     setTimeout(() => fx.chuva(140), 1300);
     setTimeout(() => { palco.acao('brinde'); }, 4200);
     let k = 0; clearInterval(fogosTimer);
@@ -624,14 +693,93 @@ function renderRevisao(decisivas) {
 }
 
 function voltarInicio() {
+  limparSessao(); fecharAviso();
   clearInterval(contagemTimer); clearInterval(fogosTimer); clearTimeout(dicaTimer);
   fx.limpar(); modoOuro(false);
-  $('#modal').hidden = true; $('#aviso-chopp').classList.remove('mostra');
+  $('#modal').hidden = true; $('#folha-placa').hidden = true; $('#aviso-chopp').classList.remove('mostra');
   document.activeElement?.blur();
   palco.caneca(false);
   mostrar('descanso', { deMoto: telaAtual === 'resultado' });
 }
-document.querySelectorAll('[data-acao="inicio"]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (telaAtual === 'descanso') return; tocar('toque'); voltarInicio(); }));
+document.querySelectorAll('[data-acao="inicio"]').forEach((b) => b.addEventListener('click', (e) => {
+  e.stopPropagation(); if (telaAtual === 'descanso') return; tocar('toque');
+  if (telaAtual === 'cadastro' || telaAtual === 'quiz') registrarAbandono('cancelou');
+  voltarInicio();
+}));
+
+// ---------- sessão: retomar de onde parou (tela fechada, recarregada ou saiu sem querer) ----------
+const SESSAO = 'eg_sessao';
+function fotoSessao() {
+  if (telaAtual === 'cadastro') return { tela: 'cadastro', form: { nome: fNome.value, whats: fWhats.value, placa: fPlaca.value, placaStatus, assoc: associado, lgpd: $('#f-lgpd').checked } };
+  if (telaAtual === 'quiz' && partida.length && !finalizado) return { tela: 'quiz', jogador, partida, escolhas, atual, regras, choppPerdido, errosDecisivas };
+  return null;
+}
+function salvarSessao(extra) {
+  try {
+    const foto = extra?.dados ? { tela: 'resultado', dados: extra.dados } : fotoSessao();
+    if (foto) localStorage.setItem(SESSAO, JSON.stringify({ ...foto, ts: Date.now() }));
+  } catch { /* sem storage */ }
+}
+function lerSessao() { try { return JSON.parse(localStorage.getItem(SESSAO)); } catch { return null; } }
+function limparSessao() { try { localStorage.removeItem(SESSAO); } catch { /* sem storage */ } }
+function marcarAtividade() { const s = lerSessao(); if (s) { s.ts = Date.now(); try { localStorage.setItem(SESSAO, JSON.stringify(s)); } catch { /* sem storage */ } } }
+$('#form').addEventListener('input', () => { clearTimeout(salvarSessao.t); salvarSessao.t = setTimeout(salvarSessao, 300); });
+
+// Quem desiste no meio também vai para o painel (sem dados pessoais se não autorizou a LGPD).
+function registrarAbandono(motivo, foto = fotoSessao()) {
+  if (!foto || (foto.tela !== 'cadastro' && foto.tela !== 'quiz')) return;
+  const f = foto.form; const j = foto.jogador;
+  const temAlgo = f ? (f.nome?.trim() || soDigitos(f.whats || '') || f.placa) : true;
+  if (!temAlgo) { limparSessao(); return; }
+  const lgpd = f ? !!f.lgpd : !!j?.lgpd;
+  const respostas = foto.tela === 'quiz' ? (foto.escolhas || []).map((e, i) => {
+    if (e === undefined || e === null) return null; const q = foto.partida[i];
+    return { pergunta: i + 1, id: q.id, etapa: q.etapa, valeChopp: q.valeChopp, texto: q.texto, resposta: q.opcoes[e], respostaCorreta: q.respostaCorreta, acertou: e === q.correta };
+  }).filter(Boolean) : [];
+  const placaStatusAb = f ? (f.placaStatus === 'vazia' ? (f.placa ? 'incompleta' : 'vazia') : f.placaStatus) : j?.placaStatus;
+  salvarLead({
+    id: uid(), status: 'incompleto', motivo,
+    etapa: foto.tela === 'quiz' ? `quiz (respondeu ${respostas.length} de ${foto.partida.length})` : 'cadastro',
+    nome: lgpd ? (f ? f.nome.trim().replace(/\s+/g, ' ') : j.nome).slice(0, 120) : '',
+    whatsapp: lgpd ? (f ? soDigitos(f.whats || '') : j.whatsapp).slice(0, 15) : '',
+    placa: lgpd ? ((f ? (f.placaStatus === 'informada' ? f.placa : '') : j.placa) || '').slice(0, 8) : '',
+    placaStatus: placaStatusAb || '', associado: f ? f.assoc === 'sim' : !!j?.associado, lgpd,
+    respostas, ganhouChopp: false, clientTime: Date.now(), device: deviceId(),
+  });
+  limparSessao();
+}
+
+function retomarSessao() {
+  const s = lerSessao(); if (!s) return false;
+  const idade = Date.now() - (s.ts || 0);
+  const limite = s.tela === 'resultado' ? RETOMAR_RESULTADO_MS : RETOMAR_MS;
+  if (idade > limite) { registrarAbandono('saiu da tela', s); limparSessao(); return false; }
+  if (s.tela === 'cadastro') {
+    novoJogo(); restaurando = true;
+    const f = s.form;
+    fNome.value = f.nome || ''; fNome.dispatchEvent(new Event('input'));
+    fWhats.value = f.whats || ''; fWhats.dispatchEvent(new Event('input'));
+    if (f.placaStatus && MOTIVOS_PLACA[f.placaStatus]) definirSemPlaca(f.placaStatus); else { fPlaca.value = f.placa || ''; fPlaca.dispatchEvent(new Event('input')); }
+    if (f.assoc) fAssoc.querySelector(`[data-v="${f.assoc}"]`)?.click();
+    if (f.lgpd) { $('#f-lgpd').checked = true; $('#f-lgpd').dispatchEvent(new Event('change')); }
+    restaurando = false; salvarSessao();
+    palco.aoPousar = () => { palco.aoPousar = null; palco.acaoTemp('acenar', 1800); palco.expressaoTemp('feliz', 1800); palco.falar('Que bom, você voltou! Vamos continuar 😉', 3000); };
+    return true;
+  }
+  if (s.tela === 'quiz') {
+    ({ jogador, partida, regras, choppPerdido, errosDecisivas } = s); escolhas = s.escolhas || []; atual = s.atual || 0; finalizado = false;
+    if (escolhas[atual] !== undefined && escolhas[atual] !== null) atual += 1; // a resposta dessa pergunta já tinha sido dada
+    montarProgresso();
+    if (atual >= partida.length) { mostrar('quiz'); finalizar(); return true; }
+    const p = partida[atual];
+    modoOuro(!!p.valeChopp); if (p.valeChopp && !choppPerdido) palco.caneca(true, 1);
+    mostrar('quiz'); salvarSessao();
+    setTimeout(() => { renderPergunta(); palco.falar(`Bem-vindo de volta! Seguimos na pergunta ${atual + 1} 😉`, 2800); }, 450);
+    return true;
+  }
+  if (s.tela === 'resultado') { mostrarResultado(s.dados, true); return true; }
+  return false;
+}
 
 function deviceId() {
   try {
@@ -650,11 +798,22 @@ function iniciarSono() {
 function pararSono() { clearInterval(sonoTimer); sonoTimer = null; }
 
 // ---------- inatividade ----------
-let inatTimer = null;
+let inatTimer = null; let avisoTimer = null;
 function armarInatividade() {
-  clearTimeout(inatTimer);
-  if (telaAtual === 'cadastro' || telaAtual === 'quiz') inatTimer = setTimeout(voltarInicio, INATIVIDADE_MS);
+  clearTimeout(inatTimer); fecharAviso();
+  if (telaAtual === 'cadastro' || telaAtual === 'quiz') { inatTimer = setTimeout(mostrarAviso, INATIVIDADE_MS); marcarAtividade(); }
 }
+function mostrarAviso() {
+  let s = AVISO_S; $('#ainda-ai-seg').textContent = s; $('#ainda-ai').hidden = false;
+  tocar('suspense'); palco.acaoTemp('chamar', 2400); palco.expressaoTemp('curioso', 3000); palco.falar('Ei! Ainda está aí? 👀', 3000);
+  clearInterval(avisoTimer);
+  avisoTimer = setInterval(() => {
+    s -= 1; $('#ainda-ai-seg').textContent = s;
+    if (s <= 0) { fecharAviso(); registrarAbandono('inatividade'); voltarInicio(); }
+  }, 1000);
+}
+function fecharAviso() { clearInterval(avisoTimer); avisoTimer = null; $('#ainda-ai').hidden = true; }
+$('#ainda-ai-ok').addEventListener('click', () => { armarInatividade(); palco.falar('Oba! Bora continuar!', 1800); });
 ['pointerdown', 'keydown', 'input'].forEach((ev) => document.addEventListener(ev, armarInatividade, { passive: true }));
 
 // ---------- status escondido: 5 toques no logo ----------
@@ -690,15 +849,18 @@ observarConfig((c) => {
   const primeira = !config;
   config = c;
   somDoEvento(c.som !== false);
+  // limpeza feita no painel (dados de teste): apaga a cópia local e o histórico de sorteio
+  if (aplicarLimpeza(c.limpezaEm)) { try { localStorage.removeItem('eg_conjuntos_recentes'); } catch { /* sem storage */ } }
   atualizarTextosRegra();
   if (c.pausado) mostrar('pausa');
   else if (telaAtual === 'pausa' || primeira) {
-    if (primeira) { palco.irPara($(ANCORAS.descanso), { instantaneo: true }); }
+    if (primeira) { palco.irPara($(ANCORAS.descanso), { instantaneo: true }); if (retomarSessao()) return; }
     mostrar('descanso');
   }
 });
 window.addEventListener('online', reenviarPendentes);
 setTimeout(reenviarPendentes, 5000);
+setInterval(() => { if (navigator.onLine) reenviarPendentes(); }, 60000); // garantia extra durante o evento
 (document.fonts?.ready || Promise.resolve()).then(() => setTimeout(() => document.body.classList.remove('carregando'), 150));
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
