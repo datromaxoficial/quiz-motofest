@@ -142,3 +142,24 @@ td a { color: var(--azul); font-weight: 700; text-decoration: none; }
 .btn.mini { padding: 6px 12px; font-size: 13px; border-radius: 10px; }
 button.tag.entregue { border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; padding: 4px 10px; }
 .cupom { display: inline-block; margin-left: 6px; font-family: ui-monospace, Consolas, monospace; font-weight: 800; letter-spacing: .08em; font-size: 12px; padding: 2px 7px; border-radius: 6px; border: 1px dashed rgba(255,197,49,.7); color: #FFC531; }
+
+/* regras do jogo e banco de perguntas */
+.regras-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.regras-grid input { width: 100%; }
+#c-sorteio:checked + .trilho, #c-som:checked + .trilho { background: var(--azul); }
+.regras-erro { list-style: none; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; background: rgba(43,214,123,.1); color: #2BD67B; }
+.regras-erro.tem-erro { background: rgba(229,72,77,.12); color: #FF6B70; }
+.regras-erro li + li { margin-top: 4px; }
+.cartao.banco { margin-top: 14px; }
+.cartao.banco > * + * { margin-top: 12px; }
+.p-tag { width: 170px; padding: 6px 10px !important; font-size: 13px !important; }
+.p-ativa { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin-left: auto; }
+.pergunta.inativa { opacity: .5; }
+.p-aviso { color: #FF6B70; font-size: 13px; font-weight: 700; margin-top: 6px; }
+.sub-tab { color: var(--texto-2); font-size: 11px; font-weight: 600; }
+.bh .valor small { color: var(--texto-2); font-weight: 600; }
+@media (max-width: 900px) { .regras-grid { grid-template-columns: 1fr 1fr; } }
+.pergunta .p-topo { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.pergunta .p-topo .p-tag { width: 200px !important; flex: none; }
+.pergunta .p-topo .p-ativa { margin-left: auto; white-space: nowrap; }
+.pergunta .p-topo .p-ativa input { width: auto; }

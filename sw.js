@@ -1,5 +1,5 @@
 // Cache offline do totem: depois da primeira abertura com internet, o quiz abre sem rede.
-const VERSAO = 'v20261011140622';
+const VERSAO = 'v20261011151850';
 const ARQUIVOS = [
   './', './index.html', './config.js', './manifest.json', './css/totem.css', './js/totem.js',
   './assets/logo-branco.svg', './assets/icone.png',

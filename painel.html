@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#00142F">
 <title>Painel do Quiz</title>
 <link rel="icon" href="assets/icone.png">
-<link rel="stylesheet" href="css/painel.css">
+<link rel="stylesheet" href="css/painel.css?v=20261011151850">
 </head>
 <body>
 <header class="topo">
@@ -103,16 +103,33 @@
           </label>
           <p class="info">Chopps já ganhos: <strong id="c-ganhos">0</strong> <button class="link" id="c-zerar">Zerar contador</button></p>
         </div>
-        <div class="cartao">
-          <h2>Perguntas</h2>
-          <p class="info">Marque a resposta certa de cada pergunta. <strong>Regra do chopp:</strong> as 3 últimas perguntas valem chopp, e para ganhar a pessoa precisa acertar as 3. As primeiras são de aquecimento e não contam para o prêmio.</p>
-          <div id="c-perguntas"></div>
-          <button class="btn" id="c-add">+ Adicionar pergunta</button>
+        <div class="cartao" id="c-regras">
+          <h2>Regras do jogo</h2>
+          <div class="regras-grid">
+            <label class="campo">Perguntas por partida<input type="number" id="c-total" min="1" step="1"></label>
+            <label class="campo">Aquecimento<input type="number" id="c-aquec" min="0" step="1"></label>
+            <label class="campo">Valendo chopp<input type="number" id="c-decis" min="1" step="1"></label>
+            <label class="campo">Acertos para ganhar<input type="number" id="c-acertos" min="1" step="1"></label>
+          </div>
+          <label class="chave">
+            <input type="checkbox" id="c-sorteio">
+            <span class="trilho"><i></i></span>
+            <span><strong>Sortear perguntas</strong><br><small>Cada partida sorteia perguntas diferentes do banco e embaralha as alternativas, evitando repetir os conjuntos recentes.</small></span>
+          </label>
+          <ul class="regras-erro" id="c-regras-erro"></ul>
+          <p class="info">Padrão do Motofest: 5 perguntas, 2 de aquecimento, 3 valendo chopp e precisa acertar as 3. O aquecimento não conta para o prêmio.</p>
         </div>
+      </div>
+      <div class="cartao banco">
+        <h2>Banco de perguntas</h2>
+        <p class="info" id="c-banco-info"></p>
+        <p class="info">Marque a alternativa certa de cada pergunta. Desmarque "Ativa" para tirar uma pergunta do sorteio sem apagá-la.</p>
+        <div id="c-perguntas"></div>
+        <button class="btn" id="c-add">+ Adicionar pergunta</button>
       </div>
       <div class="salvar-barra">
         <span id="c-msg"></span>
-        <button class="btn" id="c-restaurar">Restaurar perguntas originais</button>
+        <button class="btn" id="c-restaurar">Restaurar banco padrão</button>
         <button class="btn primario" id="c-salvar">Salvar alterações</button>
       </div>
     </div>
@@ -122,6 +139,6 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="config.js"></script>
-<script type="module" src="js/painel.js"></script>
+<script type="module" src="js/painel.js?v=20261011151850"></script>
 </body>
 </html>

@@ -3,6 +3,9 @@
 set -e
 cd "$(dirname "$0")"
 NODE_PATH=${NODE_PATH:-node_modules}
+node --test tests/*.test.mjs
 npx esbuild src/totem.js src/painel.js --bundle --minify --format=esm --target=es2020 --outdir=js --legal-comments=none
-# Atualiza a versão do cache offline para os tablets baixarem a nova versão.
-sed -i "s/const VERSAO = '[^']*'/const VERSAO = 'v$(date +%Y%m%d%H%M%S)'/" sw.js
+# Nova versão: o cache offline e o navegador dos tablets baixam os arquivos novos.
+V=$(date +%Y%m%d%H%M%S)
+sed -i "s/const VERSAO = '[^']*'/const VERSAO = 'v$V'/" sw.js
+sed -i -E "s#(href=\"css/(totem|painel)\.css)(\?v=[0-9]+)?\"#\1?v=$V\"#; s#(src=\"js/(totem|painel)\.js)(\?v=[0-9]+)?\"#\1?v=$V\"#" index.html painel.html

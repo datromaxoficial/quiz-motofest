@@ -9,43 +9,10 @@ import {
 } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 
-export const DEFAULT_CONFIG = {
-  pausado: false,
-  som: true,
-  limiteChopps: 0,
-  perguntas: [
-    {
-      tag: 'Conscientização',
-      texto: 'Qual é o principal motivo de acidentes causados pelo uso do celular ao volante?',
-      opcoes: ['Distração visual e de atenção', 'Aumento do consumo de combustível', 'Desgaste dos freios'],
-      correta: 0, valeChopp: false,
-    },
-    {
-      tag: 'Distância de segurança',
-      texto: 'Em pistas molhadas ou em dias de chuva, o que deve ser feito em relação à distância do veículo da frente?',
-      opcoes: ['Manter a mesma distância', 'Dobrar a distância de segurança', 'Colar no veículo para evitar derrapagens'],
-      correta: 1, valeChopp: false,
-    },
-    {
-      tag: 'Descanso',
-      texto: 'Em viagens longas de moto ou carro, qual é o tempo máximo recomendado antes de fazer uma pausa para descanso?',
-      opcoes: ['A cada 2 horas ou 200 km', 'Apenas quando o combustível acabar', 'A cada 5 horas ininterruptas'],
-      correta: 0, valeChopp: true,
-    },
-    {
-      tag: 'Prioridade',
-      texto: 'No trânsito urbano, de quem é a prioridade máxima segundo o Código de Trânsito?',
-      opcoes: ['Dos veículos de grande porte', 'Dos pedestres e ciclistas', 'De quem circula na via principal'],
-      correta: 1, valeChopp: true,
-    },
-    {
-      tag: 'Capacete',
-      texto: 'Pilotar moto sem capacete com viseira ou óculos de proteção, ou com o capacete desatado, gera qual tipo de infração?',
-      opcoes: ['Infração leve com advertência', 'Infração gravíssima, com multa e retenção da habilitação', 'Não é infração em vias urbanas'],
-      correta: 1, valeChopp: true,
-    },
-  ],
-};
+import { migrarConfig } from './banco.js';
+
+// Configuração padrão: regras do jogo (5 perguntas, 2 de aquecimento, 3 valendo chopp, acertar as 3) e banco com 20 perguntas.
+export const DEFAULT_CONFIG = migrarConfig(null);
 
 const cfg = typeof window !== 'undefined' ? window.FIREBASE_CONFIG : null;
 export const modoDemo = !(cfg && cfg.apiKey && cfg.projectId);
@@ -68,13 +35,7 @@ const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } c
 export const uid = () =>
   (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-// Regra do chopp: valem chopp sempre as 3 últimas perguntas, e para ganhar é preciso acertar as 3.
-export const PERGUNTAS_CHOPP = 3;
-export const aplicarRegraChopp = (ps) => ps.map((p, i) => ({ ...p, valeChopp: i >= ps.length - PERGUNTAS_CHOPP }));
-const mesclarConfig = (c) => ({
-  ...DEFAULT_CONFIG, ...(c || {}),
-  perguntas: aplicarRegraChopp((c && c.perguntas && c.perguntas.length) ? c.perguntas : DEFAULT_CONFIG.perguntas),
-});
+const mesclarConfig = (c) => migrarConfig(c);
 
 // Avisa ouvintes da mesma página e de outras abas (modo demo).
 const ouvintes = new Set();

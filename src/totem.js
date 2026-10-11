@@ -5,6 +5,7 @@ import {
 import { Palco } from './palco.js';
 import { Fundo, Efeitos } from './fx.js';
 import { tocar, destravarAudio, alternarSom, somLigado, somDoEvento } from './som.js';
+import { normalizarRegras, sortearPartida, avaliar, gerarCodigo, chaveConjunto, limiteRecentes } from './regras.js';
 
 const $ = (s) => document.querySelector(s);
 const LETRAS = 'ABCD';
@@ -17,7 +18,6 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 let config = null;
 let stats = { chopps: 0 };
 let jogador = null;
-let respostas = [];
 let atual = 0;
 let travado = false;
 
@@ -38,7 +38,8 @@ addEventListener('resize', medidas);
 const palco = new Palco($('#palco'), $('#balao'));
 const fundo = new Fundo($('#fx-fundo'));
 const fx = new Efeitos($('#fx'));
-window.__egon = palco; // ajuda na manutenção pelo console
+window.__egon = palco; // ajuda na manutenção pelo console e nos testes automáticos
+window.__quiz = { partida: () => partida, escolhas: () => escolhas, regras: () => regras };
 
 // ---------- texto animado palavra por palavra ----------
 function palavras(el, html, inicio = 0, passo = 60) {
@@ -113,6 +114,16 @@ document.addEventListener('pointerdown', (e) => {
 }, { passive: true });
 
 // ---------- tela de descanso ----------
+// Textos que dependem das regras salvas no painel.
+const regrasAtuais = () => normalizarRegras(config || {});
+const frasePremio = (r) => (r.acertosParaGanhar >= r.decisivas ? `As ${r.decisivas} últimas valem chopp!` : `Acerte ${r.acertosParaGanhar} das ${r.decisivas} últimas e ganhe chopp!`);
+function atualizarTextosRegra() {
+  const r = regrasAtuais();
+  $('#passo-perguntas').innerHTML = `${r.totalPerguntas} perguntas<br>de trânsito`;
+  $('#passo-chopp').innerHTML = r.acertosParaGanhar >= r.decisivas ? `Acertou as ${r.decisivas} finais?<br>Chopp na mão!` : `Acertou ${r.acertosParaGanhar} das ${r.decisivas} finais?<br>Chopp na mão!`;
+  CENAS[0].sub = `${r.totalPerguntas} perguntas rápidas sobre trânsito. ${frasePremio(r)}`;
+  CENAS[4].frase = `${r.acertosParaGanhar} acertos finais = <span class="ouro">1 chopp</span>`;
+}
 const CENAS = [
   { frase: 'Acerte e ganhe um <span class="ouro">chopp gelado</span>', sub: '5 perguntas rápidas sobre trânsito. As 3 últimas valem chopp!',
     egon: () => { palco.acaoTemp('acenar', 2600); palco.expressaoTemp('piscar', 2600); palco.falar('Oi! Eu sou o EGon! 👋', 3000); } },
@@ -185,7 +196,7 @@ const valido = { nome: false, whats: false, placa: false, assoc: false, lgpd: fa
 const perguntou = {};
 
 function novoJogo() {
-  jogador = null; respostas = []; atual = 0; associado = null;
+  jogador = null; atual = 0; associado = null;
   $('#form').reset(); $('#f-lgpd').checked = false;
   fAssoc.querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', 'false'));
   delete fAssoc.dataset.v;
@@ -303,15 +314,29 @@ function abrirModal(titulo, texto, aoFechar) {
 }
 
 // ---------- quiz ----------
-const perguntas = () => config.perguntas;
-let dicaTimer = null; let choppPerdido = false; let faseChopp = false;
+// A partida é sorteada no início (regras.js): aquecimento primeiro, perguntas que valem chopp no fim,
+// alternativas embaralhadas. O resultado do prêmio é calculado só no final, a partir das escolhas.
+let partida = []; let escolhas = []; let regras = normalizarRegras();
+const perguntas = () => partida;
+let dicaTimer = null; let choppPerdido = false; let faseChopp = false; let errosDecisivas = 0;
 
-function modoOuro(sim) { faseChopp = sim; document.body.classList.toggle('ouro', sim); fundo.setOuro(sim); palco.ouro(sim); }
+function modoOuro(sim) { faseChopp = sim; document.body.classList.toggle('fase-ouro', sim); fundo.setOuro(sim); palco.ouro(sim); }
+
+const RECENTES = 'eg_conjuntos_recentes';
+function lerRecentes() { try { return JSON.parse(localStorage.getItem(RECENTES)) || []; } catch { return []; } }
+function guardarRecente(ids) {
+  const limite = limiteRecentes(config.banco.filter((p) => p.ativa !== false).length, ids.length);
+  const lista = [chaveConjunto(ids), ...lerRecentes()].slice(0, limite);
+  try { localStorage.setItem(RECENTES, JSON.stringify(lista)); } catch { /* sem storage */ }
+}
 
 function iniciarQuiz() {
-  respostas = []; atual = 0; choppPerdido = false; modoOuro(false);
+  regras = normalizarRegras(config);
+  partida = sortearPartida(config.banco, regras, { recentes: lerRecentes() });
+  guardarRecente(partida.map((q) => q.id));
+  escolhas = []; atual = 0; choppPerdido = false; errosDecisivas = 0; finalizado = false; modoOuro(false);
   const ol = $('#progresso'); ol.innerHTML = '';
-  perguntas().forEach((p, i) => {
+  partida.forEach((p, i) => {
     const li = document.createElement('li'); li.textContent = i + 1;
     if (p.valeChopp) { li.classList.add('chopp'); li.insertAdjacentHTML('beforeend', '<svg class="mini-chopp"><use href="#i-chopp"/></svg>'); }
     ol.appendChild(li);
@@ -328,7 +353,8 @@ function renderPergunta() {
   $('#progresso').querySelectorAll('li').forEach((li, i) => { li.classList.toggle('atual', i === atual); li.classList.toggle('passou', i < atual); });
   $('#q-num').textContent = String(atual + 1).padStart(2, '0'); $('#q-de').textContent = `/${String(ps.length).padStart(2, '0')}`;
   $('#q-tag').textContent = p.tag || 'Trânsito';
-  $('#q-chopp').hidden = !p.valeChopp;
+  $('#q-etapa').textContent = p.valeChopp ? `Valendo chopp · ${ps.filter((q) => q.valeChopp).indexOf(p) + 1} de ${regras.decisivas}` : `Aquecimento · ${atual + 1} de ${regras.aquecimento}`;
+  $('#q-etapa').classList.toggle('tag-chopp', p.valeChopp);
   const n = palavras($('#q-texto'), esc(p.texto), 80, 32);
   const box = $('#q-opcoes'); box.innerHTML = '';
   const iniOpc = 300 + n * 32;
@@ -352,11 +378,11 @@ function renderPergunta() {
 function centro(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r }; }
 
 async function responder(i, botao) {
-  if (travado) return; travado = true;
+  if (travado || telaAtual !== 'quiz') return; travado = true;
   clearTimeout(dicaTimer); armarInatividade();
   const p = perguntas()[atual];
-  const ok = i === p.correta;
-  respostas.push({ pergunta: atual + 1, texto: p.texto, resposta: p.opcoes[i], escolha: i, correta: p.correta, acertou: ok, valeChopp: !!p.valeChopp });
+  escolhas[atual] = i;
+  const ok = i === p.correta; // só para a reação na tela; o prêmio é calculado em avaliar()
   const bts = [...$('#q-opcoes').querySelectorAll('.opcao')];
   botao.classList.add('escolhida'); tocar('suspense');
   const c = centro(botao);
@@ -368,6 +394,8 @@ async function responder(i, botao) {
     else if (k === i) { b.classList.add('errado'); b.querySelector('use').setAttribute('href', '#i-x'); } else b.classList.add('apagada');
   });
   $('#progresso').children[atual].classList.add(ok ? 'certo' : 'errado');
+  if (!ok && p.valeChopp) errosDecisivas += 1;
+  const perdeuAgora = p.valeChopp && !choppPerdido && errosDecisivas > regras.decisivas - regras.acertosParaGanhar;
   if (ok) {
     tocar('certo');
     fx.explosao(c.r.right - c.r.height * 0.6, c.y, { n: 30, cores: p.valeChopp ? ['#FFE27A', '#FFFFFF', '#FFB627'] : ['#2BD67B', '#FFFFFF', '#6FE3FF'] });
@@ -377,7 +405,7 @@ async function responder(i, botao) {
   } else {
     tocar('errado');
     palco.acaoTemp('triste', 2200); palco.expressaoTemp('triste', 2200);
-    if (p.valeChopp && !choppPerdido) {
+    if (perdeuAgora) {
       choppPerdido = true; palco.nivelCaneca(0);
       palco.falar(`Ah não, derramou o chopp! Era a ${LETRAS[p.correta]}.`, 2600);
       setTimeout(() => palco.caneca(false), 1500);
@@ -387,17 +415,22 @@ async function responder(i, botao) {
 }
 
 async function proxima() {
+  if (telaAtual !== 'quiz') return;
   const ps = perguntas();
   atual += 1;
   if (atual >= ps.length) { finalizar(); return; }
-  if (ps[atual].valeChopp && !ps[atual - 1].valeChopp) await avisoChopp(ps.filter((p) => p.valeChopp).length);
-  renderPergunta();
+  if (ps[atual].valeChopp && !ps[atual - 1]?.valeChopp) await avisoChopp();
+  if (telaAtual === 'quiz') renderPergunta();
 }
 
+const textoRegra = (r) => (r.acertosParaGanhar >= r.decisivas
+  ? `Acerte ${r.decisivas > 1 ? `as ${r.decisivas}` : 'esta'} e o chopp é seu`
+  : `Acerte ${r.acertosParaGanhar} de ${r.decisivas} e o chopp é seu`);
+
 // Interlúdio: a tela fica dourada e o EGon aparece com a caneca enchendo.
-async function avisoChopp(qtd) {
-  $('#aviso-qtd').textContent = qtd;
-  $('#aviso-sub').textContent = qtd > 1 ? `Acerte as ${qtd} e o chopp é seu` : 'Acerte e o chopp é seu';
+async function avisoChopp() {
+  $('#aviso-qtd').textContent = regras.decisivas;
+  $('#aviso-sub').textContent = textoRegra(regras);
   const a = $('#aviso-chopp'); a.classList.add('mostra');
   modoOuro(true); tocar('chopp'); fundo.pulsoWarp(600);
   palco.irPara($('#ancora-aviso'), { semAnel: false, balao: 'dir' });
@@ -412,27 +445,34 @@ async function avisoChopp(qtd) {
 }
 
 // ---------- resultado ----------
-let contagemTimer = null; let fogosTimer = null;
+let contagemTimer = null; let fogosTimer = null; let finalizado = false;
 function finalizar() {
-  const total = respostas.length;
-  const acertos = respostas.filter((r) => r.acertou).length;
-  const valendo = respostas.filter((r) => r.valeChopp);
-  const acertouChopp = valendo.length > 0 && valendo.every((r) => r.acertou);
+  if (finalizado) return; // nunca grava a mesma partida duas vezes nem gera dois cupons
+  finalizado = true;
+  const av = avaliar(partida, escolhas, regras);
   const limite = Number(config.limiteChopps) || 0;
   const esgotado = limite > 0 && stats.chopps >= limite;
-  const ganhou = acertouChopp && !esgotado;
+  const ganhou = av.cumpriuRegra && !esgotado;
+  const codigo = ganhou ? gerarCodigo() : '';
 
-  const codigo = ganhou ? codigoCupom() : '';
   const lead = {
     id: uid(),
     codigo,
     ...jogador,
-    respostas,
-    acertos,
-    total,
-    acertosChopp: valendo.filter((r) => r.acertou).length,
+    perguntasIds: partida.map((q) => q.id),
+    respostas: av.respostas,
+    acertos: av.acertos,
+    total: av.total,
+    acertosAquecimento: av.acertosAquecimento,
+    totalAquecimento: av.totalAquecimento,
+    acertosDecisivas: av.acertosDecisivas,
+    acertosChopp: av.acertosDecisivas,
+    totalDecisivas: av.totalDecisivas,
+    acertosNecessarios: av.acertosNecessarios,
+    regras: { ...regras },
     ganhouChopp: ganhou,
-    choppEsgotado: acertouChopp && esgotado,
+    choppEsgotado: av.cumpriuRegra && esgotado,
+    entregue: false,
     clientTime: Date.now(),
     device: deviceId(),
   };
@@ -440,29 +480,32 @@ function finalizar() {
   if (ganhou) stats.chopps += 1; // otimista, o snapshot corrige
 
   const nome = capitalizar(primeiroNome(jogador.nome));
-  $('#r-total').textContent = total;
+  const tela = $('#tela-resultado');
+  tela.classList.toggle('vitoria', av.cumpriuRegra);
+  tela.classList.toggle('derrota', !av.cumpriuRegra);
+  $('#r-total').textContent = av.totalDecisivas;
   $('#r-premio').hidden = !ganhou;
-  $('#tela-resultado').classList.toggle('vitoria', ganhou || acertouChopp);
+  $('#r-revisao').hidden = av.cumpriuRegra;
   if (!ganhou) modoOuro(false);
   if (ganhou) {
-    $('#r-titulo').textContent = `Parabéns, ${nome}!`;
-    $('#r-msg').textContent = 'Você acertou as perguntas que valiam chopp.';
+    $('#r-titulo').innerHTML = 'Parabéns, você ganhou <span class="ouro">um chopp!</span>';
+    $('#r-msg').textContent = `${nome}, mostre esta tela no balcão do estande Exclusive Gold e informe o código para retirar seu chopp.`;
     $('#r-voucher-nome').textContent = jogador.nome.split(' ').slice(0, 2).join(' ');
     $('#r-voucher-hora').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     $('#r-voucher-codigo').textContent = codigo;
-  } else if (acertouChopp && esgotado) {
+  } else if (av.cumpriuRegra && esgotado) {
     $('#r-titulo').textContent = `Mandou bem, ${nome}!`;
-    $('#r-msg').textContent = 'Você acertou tudo, mas os chopps desta ação já acabaram. Nossa equipe vai falar com você!';
+    $('#r-msg').textContent = 'Você acertou as perguntas que valiam chopp, mas os chopps desta ação já acabaram. Nossa equipe vai falar com você!';
   } else {
-    $('#r-titulo').textContent = acertos >= total - 1 ? `Foi por pouco, ${nome}!` : `Valeu, ${nome}!`;
-    const ac = valendo.filter((r) => r.acertou).length;
-    $('#r-msg').textContent = `Você acertou ${ac} de ${valendo.length} perguntas que valiam chopp. Para ganhar, precisa acertar as ${valendo.length}. Obrigado por jogar!`;
+    $('#r-titulo').textContent = 'Ops, não foi dessa vez!';
+    $('#r-msg').textContent = `Você acertou ${av.acertosDecisivas} de ${av.totalDecisivas} perguntas que valiam chopp. Para ganhar, precisava acertar ${av.acertosNecessarios >= av.totalDecisivas ? `as ${av.totalDecisivas}` : av.acertosNecessarios}.`;
+    renderRevisao(av.respostas.filter((x) => x.valeChopp));
   }
   $('#r-acertos').textContent = '0';
   mostrar('resultado');
 
-  // placar sobe contando
-  let n = 0; const sobe = setInterval(() => { n += 1; if (n > acertos) { clearInterval(sobe); return; } $('#r-acertos').textContent = n; tocar('digita'); }, 160);
+  // placar das perguntas que valiam chopp sobe contando
+  let n = 0; const sobe = setInterval(() => { n += 1; if (n > av.acertosDecisivas) { clearInterval(sobe); return; } $('#r-acertos').textContent = n; tocar('digita'); }, 220);
 
   palco.aoPousar = null;
   if (ganhou) {
@@ -472,27 +515,35 @@ function finalizar() {
     setTimeout(() => { palco.acao('brinde'); }, 4200);
     let k = 0; clearInterval(fogosTimer);
     fogosTimer = setInterval(() => { if (++k > 5) { clearInterval(fogosTimer); return; } fx.fogos(innerWidth * (k % 2 ? 0.08 + Math.random() * 0.3 : 0.6 + Math.random() * 0.35), innerHeight * (0.08 + Math.random() * 0.1)); }, 900);
-  } else if (acertouChopp && esgotado) {
+  } else if (av.cumpriuRegra && esgotado) {
     palco.caneca(false); palco.acao('joinha'); palco.expressao('feliz');
     setTimeout(() => { tocar('fim'); fx.chuva(70); palco.falar('Mandou bem demais!', 2800); }, 650);
   } else {
     palco.caneca(false); palco.acao('idle'); palco.expressao('feliz'); palco.espontaneo(['pulinho', 'acenar', 'alongar']);
-    setTimeout(() => { tocar('fim'); palco.acaoTemp('acenar', 2400); palco.falar(acertos >= total - 1 ? 'Foi por pouquinho!' : `Valeu por jogar, ${nome}!`, 2800); }, 650);
+    setTimeout(() => { tocar('fim'); palco.acaoTemp('acenar', 2400); palco.falar(av.acertosDecisivas === av.totalDecisivas - 1 ? 'Foi por pouquinho! Na próxima vai!' : `Valeu por jogar, ${nome}!`, 2800); }, 650);
   }
 
-  let s = VOLTA_RESULTADO_S;
+  let s = ganhou ? VOLTA_RESULTADO_S : VOLTA_RESULTADO_S + 15; // mais tempo para ler a correção
+  const totalS = s;
   const anel = $('#r-anel');
-  const desenhar = () => { $('#r-contagem').textContent = s; anel.style.strokeDashoffset = String(106.8 * (1 - s / VOLTA_RESULTADO_S)); };
+  const desenhar = () => { $('#r-contagem').textContent = s; anel.style.strokeDashoffset = String(106.8 * (1 - s / totalS)); };
   desenhar();
   clearInterval(contagemTimer);
   contagemTimer = setInterval(() => { s -= 1; desenhar(); if (s <= 0) voltarInicio(); }, 1000);
 }
 
-// Código curto para conferir o cupom no balcão (sem letras que confundem, como O e 0).
-function codigoCupom() {
-  const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const n = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(4)) : [0, 0, 0, 0].map(() => Math.random() * 2 ** 32);
-  return Array.from(n, (v) => L[v % L.length]).join('');
+// Correção das perguntas que valiam chopp: enunciado, o que a pessoa marcou e a resposta certa.
+function renderRevisao(decisivas) {
+  $('#r-revisao').innerHTML = decisivas.map((r, i) => `
+    <li class="${r.acertou ? 'ok' : 'erro'}" style="--i:${i}">
+      <span class="rev-icone"><svg><use href="#${r.acertou ? 'i-check' : 'i-x'}"/></svg></span>
+      <div>
+        <p class="rev-pergunta">${esc(r.texto)}</p>
+        ${r.acertou
+    ? `<p class="rev-linha certa">Você respondeu: <b>${esc(r.resposta)}</b></p>`
+    : `<p class="rev-linha errada">Você respondeu: <b>${esc(r.resposta ?? 'sem resposta')}</b></p><p class="rev-linha certa">Resposta certa: <b>${esc(r.respostaCorreta)}</b></p>`}
+      </div>
+    </li>`).join('');
 }
 
 function voltarInicio() {
@@ -562,6 +613,7 @@ observarConfig((c) => {
   const primeira = !config;
   config = c;
   somDoEvento(c.som !== false);
+  atualizarTextosRegra();
   if (c.pausado) mostrar('pausa');
   else if (telaAtual === 'pausa' || primeira) {
     if (primeira) { palco.irPara($(ANCORAS.descanso), { instantaneo: true }); }

@@ -75,7 +75,7 @@ export class Palco {
     addEventListener('resize', () => this.redimensionar());
     this.ligarToque();
     this.ultimoT = performance.now();
-    const loop = (now) => { const dt = Math.min(0.05, (now - this.ultimoT) / 1000); this.ultimoT = now; this.quadro(dt); requestAnimationFrame(loop); };
+    const loop = (now) => { const dt = Math.max(0, Math.min(0.05, (now - this.ultimoT) / 1000)); this.ultimoT = now; if (dt > 0) this.quadro(dt); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
 

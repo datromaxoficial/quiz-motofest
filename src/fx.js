@@ -21,7 +21,7 @@ export class Fundo {
     this.sprAzul = sprite(80, 170, 255); this.sprOuro = sprite(255, 196, 80);
     this.luzes = Array.from({ length: 46 }, () => this.novaLuz(true));
     let ult = performance.now();
-    const loop = (t) => { const dt = Math.min(0.05, (t - ult) / 1000); ult = t; this.quadro(dt, t / 1000); requestAnimationFrame(loop); };
+    const loop = (t) => { const dt = Math.max(0, Math.min(0.05, (t - ult) / 1000)); ult = t; this.quadro(dt, t / 1000); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
   redim() {
@@ -112,7 +112,7 @@ export class Efeitos {
   limpar() { this.ps = []; }
 
   quadro(t) {
-    const dt = Math.min(0.05, (t - this.ult) / 1000); this.ult = t;
+    const dt = Math.max(0, Math.min(0.05, (t - this.ult) / 1000)); this.ult = t;
     const { ctx, dpr } = this;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, this.w, this.h);
     this.ps = this.ps.filter((p) => {
@@ -124,7 +124,7 @@ export class Efeitos {
       const a = k > 0.75 ? (1 - k) / 0.25 : 1;
       ctx.save(); ctx.globalAlpha = a; ctx.translate(p.x, p.y); ctx.rotate(p.rot || 0);
       switch (p.tipo) {
-        case 'onda': { ctx.restore(); ctx.save(); const r = 12 + k * 70; ctx.strokeStyle = `${p.cor}${(1 - k) * 0.9})`; ctx.lineWidth = 3 * (1 - k) + 1; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.stroke(); break; }
+        case 'onda': { ctx.restore(); ctx.save(); const r = Math.max(1, 12 + k * 70); ctx.strokeStyle = `${p.cor}${(1 - k) * 0.9})`; ctx.lineWidth = 3 * (1 - k) + 1; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.stroke(); break; }
         case 'faisca': { ctx.globalCompositeOperation = 'lighter'; const v = Math.hypot(p.vx, p.vy); const ang = Math.atan2(p.vy, p.vx); ctx.rotate(-p.rot + ang); ctx.strokeStyle = p.cor; ctx.lineWidth = p.r * 0.35; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-Math.min(40, v * 0.06), 0); ctx.stroke(); break; }
         case 'estrela': { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = p.cor; ctx.beginPath(); for (let i = 0; i < 8; i++) { const rr = i % 2 ? p.r * 0.28 : p.r; const an = (i * Math.PI) / 4; ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); } ctx.closePath(); ctx.fill(); break; }
         case 'coracao': { const s = p.r / 10; ctx.scale(s, s); ctx.fillStyle = p.cor; ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-11, -2, -6, -11, 0, -5); ctx.bezierCurveTo(6, -11, 11, -2, 0, 6); ctx.fill(); break; }
