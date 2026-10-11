@@ -5,6 +5,7 @@ import {
 } from './data.js';
 import { normalizarRegras, validarRegras, validarPergunta } from './regras.js';
 import { BANCO_PADRAO } from './banco.js';
+import { criarEgonMini } from './egon-mini.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -39,11 +40,22 @@ $('#badge-demo').hidden = !modoDemo;
 $('#form-login').addEventListener('submit', async (e) => {
   e.preventDefault(); $('#l-erro').textContent = '';
   const b = $('#form-login button[type="submit"]'); b.disabled = true; b.textContent = 'Entrando...';
-  try { await entrar($('#l-email').value.trim(), $('#l-senha').value); } catch (err) { $('#l-erro').textContent = mensagemLogin(err); }
+  try { await entrar($('#l-email').value.trim(), $('#l-senha').value); egonLogin?.acao('comemorar', 900); egonLogin?.expressao('estrela'); } catch (err) { $('#l-erro').textContent = mensagemLogin(err); egonLogin?.acao('triste', 1600); egonLogin?.expressao('triste'); egonLogin?.gesto('susto'); }
   b.disabled = false; b.textContent = 'Entrar';
 });
 $('#btn-sair').onclick = () => { if (confirm('Sair do painel neste aparelho?')) sair(); };
 
+// EGon 3D no login: acena, olha o campo em foco, tapa o visor na senha, reage ao resultado.
+let egonLogin = null;
+function ligarEgonLogin() {
+  if (egonLogin || modoDemo) return;
+  egonLogin = criarEgonMini($('#login-egon')); if (!egonLogin) return;
+  const olharCampo = (el) => { const r = el.getBoundingClientRect(); egonLogin.olharPara(r.left + r.width / 2, r.top + r.height / 2); };
+  $('#l-email').addEventListener('focus', (e) => { egonLogin.acao('idle'); egonLogin.expressao('curioso'); olharCampo(e.target); });
+  $('#l-email').addEventListener('input', (e) => olharCampo(e.target));
+  $('#l-senha').addEventListener('focus', () => { egonLogin.acao('tapar'); egonLogin.expressao('dormindo'); });
+  $('#l-senha').addEventListener('blur', () => { egonLogin.acao('idle'); egonLogin.expressao('normal'); });
+}
 function mensagemLogin(err) {
   const c = err?.code || '';
   if (c.includes('network')) return 'Sem internet. Conecte e tente de novo.';
@@ -480,6 +492,7 @@ $('#c-zerar').addEventListener('click', async () => {
 observarLogin((u) => {
   desligar.forEach((f) => f()); desligar = [];
   $('#login').hidden = !!u; $('#app').hidden = !u;
+  if (!u) ligarEgonLogin();
   $('#btn-sair').hidden = !u || modoDemo; $('#ao-vivo').hidden = !u || modoDemo;
   if (!u) return;
   desligar.push(observarLeads((l) => { todosLeads = l; separarLeads(); render(); }));

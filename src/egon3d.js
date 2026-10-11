@@ -404,6 +404,10 @@ export class Egon {
         p.y = -0.04; p.troncoX = 0.1 + sn(t * 1.2) * 0.03; p.cabX = 0.28 + sn(t * 1.2) * 0.04; p.cabZ = 0.22;
         p.b[0].z = -0.05; p.b[1].z = 0.05; p.olhar = 0; break;
       }
+      case 'tapar': { // mãos na frente do visor (digitando a senha)
+        p.b[0].x = p.b[1].x = -2.55; p.b[0].z = -0.32; p.b[1].z = 0.32; p.b[0].ex = p.b[1].ex = -1.05; p.b[0].ez = 0.55; p.b[1].ez = -0.55; p.troncoX = 0.06;
+        p.cabX = 0.12; p.olhar = 0; p.inclZ = Math.sin(t * 2) * 0.03; break;
+      }
       case 'abraco': {
         p.b[0].x = p.b[1].x = -1.2; p.b[0].z = -0.6; p.b[1].z = 0.6; p.b[0].ex = p.b[1].ex = -1.3; p.b[0].ez = 0.8; p.b[1].ez = -0.8;
         p.inclZ = sn(t * 3) * 0.08; p.cabZ = sn(t * 3) * 0.12; break;

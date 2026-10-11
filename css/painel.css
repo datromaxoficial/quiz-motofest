@@ -40,9 +40,10 @@ h2 { font-size: 16px; font-weight: 800; margin-bottom: 14px; }
 .btn.whats { background: var(--whats); border-color: var(--whats); color: #05301A; }
 
 /* login */
-.login { display: grid; place-items: center; min-height: 70vh; }
+.login { display: grid; place-items: center; min-height: 70vh; padding-top: 70px; }
 .login-cartao { width: min(400px, 100%); display: flex; flex-direction: column; gap: 14px; text-align: center; padding-top: 0; }
-.login-egon { height: 140px; margin: -50px auto 0; }
+.login-egon { width: 230px; height: 240px; margin: -86px auto -14px; display: block; }
+.login-cartao { overflow: visible; }
 .login-cartao h1 { font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 24px; }
 .login-cartao label { text-align: left; display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; color: var(--texto-2); }
 input[type=email], input[type=password], input[type=number], input[type=search], input[type=text], select, textarea {
