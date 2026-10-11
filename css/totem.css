@@ -392,3 +392,10 @@ body.carregando .tela, body.carregando #palco { opacity: 0; }
 .rev-linha.certa b { color: #6FF0A8; }
 .rev-linha.errada b { color: #FF8FA3; text-decoration: line-through; text-decoration-thickness: 2px; }
 #tela-resultado.derrota .resultado-acoes { margin-top: calc(var(--u) * 2.2); }
+
+/* logo do evento (Gravatá Motofest) */
+.logo-evento { height: calc(var(--u) * 11); margin-top: calc(var(--u) * 1.5); filter: drop-shadow(0 calc(var(--u) * .6) calc(var(--u) * 1.6) rgba(0,0,0,.45)); }
+.logos-pausa { display: flex; align-items: center; gap: calc(var(--u) * 3); margin-top: calc(var(--u) * 3); }
+.logos-pausa span { width: 1px; height: calc(var(--u) * 6); background: var(--vidro-borda); }
+.logos-pausa .logo-pausa { margin-top: 0; }
+.logo-evento-pausa { height: calc(var(--u) * 9); }
