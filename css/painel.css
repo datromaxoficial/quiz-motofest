@@ -191,6 +191,22 @@ button.tag.entregue { border: 0; cursor: pointer; font: inherit; font-size: 12px
 .dlg-acoes { display: flex; gap: 10px; justify-content: flex-end; }
 
 /* login e ajuda */
-#l-esqueci { align-self: center; font-size: 14px; }
 .ajuda { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
 .ajuda ol, .ajuda ul { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.45; margin-top: 10px; }
+
+/* rodapé DatroMax */
+body { padding-bottom: 72px; }
+.rodape-dm { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(5,14,34,0), rgba(5,14,34,.92) 40%); pointer-events: none; }
+.rodape-dm a { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; font-weight: 600; color: #C9D6EE;
+  padding: 6px 12px 6px 6px; border-radius: 99px; background: rgba(12,26,54,.85); border: 1px solid rgba(0,194,255,.25); backdrop-filter: blur(6px); transition: border-color .2s, transform .15s; }
+.rodape-dm a:hover { border-color: #00D084; transform: translateY(-1px); }
+.rodape-dm b { font-weight: 900; background: linear-gradient(90deg, #00C2FF, #00D084); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.selo-dm img { width: 26px; height: 26px; object-fit: contain; }
+.selo-dm .ico-whats { font-size: 18px; color: #25D366; }
+.insta-dm { padding: 6px 12px !important; }
+.insta-dm svg { font-size: 18px; color: #E1306C; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .rodape-dm { background: linear-gradient(180deg, rgba(240,244,250,0), rgba(240,244,250,.95) 40%); }
+  :root:not([data-theme="dark"]) .rodape-dm a { background: #fff; color: #33415C; border-color: rgba(21,101,255,.25); }
+}

@@ -7,7 +7,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator,
   doc, setDoc, updateDoc, getDoc, getDocs, writeBatch, onSnapshot, collection, query, orderBy, increment, serverTimestamp,
 } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, connectAuthEmulator, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, connectAuthEmulator } from 'firebase/auth';
 
 import { migrarConfig } from './banco.js';
 
@@ -221,4 +221,3 @@ export function observarLogin(cb) {
 }
 export const entrar = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 export const sair = () => (modoDemo ? Promise.resolve() : signOut(auth));
-export const recuperarSenha = (email) => { auth.languageCode = 'pt-BR'; return sendPasswordResetEmail(auth, email); };

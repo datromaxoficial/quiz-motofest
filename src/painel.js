@@ -1,7 +1,7 @@
 import { utils, writeFile } from 'xlsx';
 import {
   modoDemo, DEFAULT_CONFIG, observarConfig, salvarConfig, observarStats, zerarChopps,
-  observarLeads, observarLogin, entrar, sair, marcarEntregue, limparTudo, recuperarSenha,
+  observarLeads, observarLogin, entrar, sair, marcarEntregue, limparTudo,
 } from './data.js';
 import { normalizarRegras, validarRegras, validarPergunta } from './regras.js';
 import { BANCO_PADRAO } from './banco.js';
@@ -63,12 +63,7 @@ function mensagemLogin(err) {
   if (c.includes('invalid-email')) return 'Confira o e-mail digitado.';
   return 'E-mail ou senha incorretos.';
 }
-$('#l-esqueci').addEventListener('click', async () => {
-  const email = $('#l-email').value.trim();
-  if (!email) { $('#l-erro').textContent = 'Digite seu e-mail acima e toque de novo em "Esqueci minha senha".'; return; }
-  try { await recuperarSenha(email); $('#l-erro').textContent = ''; toast('Enviamos um link para criar uma nova senha. Confira o e-mail (e o spam).'); }
-  catch (err) { $('#l-erro').textContent = mensagemLogin(err); }
-});
+
 
 // ---------- abas ----------
 document.querySelectorAll('[data-aba]').forEach((b) => b.addEventListener('click', () => {
