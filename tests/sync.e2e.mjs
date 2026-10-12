@@ -132,6 +132,9 @@ test('evento completo: online, sem internet, desligado, painel ao vivo, reenvio 
   await totem.waitForTimeout(8000); // reenvio automático acontece 5 s depois de abrir
   assert.equal(await contagem(painel.page), b0 + 3, 'reenvio não duplica participações');
 
+  // No Firebase de produção (SEM_LIMPEZA=1) para aqui: não apaga os dados de quem está testando.
+  if (process.env.SEM_LIMPEZA) { await painel.ctx.close(); await tablet.close(); return; }
+
   // 6) limpeza dos testes: senha errada não apaga; com senha 123 apaga painel e totens
   await painel.page.click('[data-aba="config"]');
   await painel.page.click('#c-limpar');
