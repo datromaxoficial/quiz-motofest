@@ -2,13 +2,35 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight, PointLight, Color, Vector2, Vector3,
   Raycaster, PMREMGenerator, Mesh, PlaneGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace, AdditiveBlending,
-  NeutralToneMapping, MathUtils, Plane,
+  NeutralToneMapping, MathUtils, Plane, MeshPhongMaterial,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Egon } from './egon3d.js';
 import { criarMoto, PONTOS_MOTO } from './moto3d.js';
 
 const { clamp } = MathUtils;
+
+// Modo leve: troca os materiais PBR (físicos, com verniz) por Phong, bem mais barato na GPU do tablet,
+// mantendo cor, brilho, transparência e textura.
+function aliviarMateriais(raiz) {
+  const trocas = new Map();
+  raiz.traverse((o) => {
+    if (!o.isMesh) return;
+    const leve = (m) => {
+      if (!m || !(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial)) return m;
+      if (!trocas.has(m)) {
+        const n = new MeshPhongMaterial({
+          color: m.color, map: m.map, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, emissiveMap: m.emissiveMap,
+          transparent: m.transparent, opacity: m.opacity, side: m.side, depthWrite: m.depthWrite, visible: m.visible,
+          shininess: Math.round(10 + (1 - (m.roughness ?? 0.5)) * 90), specular: m.metalness > 0.5 ? 0x999999 : 0x2a2a2a,
+        });
+        n.userData.original = m; trocas.set(m, n);
+      }
+      return trocas.get(m);
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(leve) : leve(o.material);
+  });
+}
 const ALTURA_EGON = 2.15; // altura do boneco em unidades do mundo (com os chifres)
 const ESCALA_MOTO = 0.74;
 const MOTO_Z = 0.3; // a moto fica um pouco à frente do EGon, para ele sentar no banco // de moto ele fica um pouco menor, para a moto caber no layout
@@ -42,15 +64,15 @@ function texturaSombra() {
 }
 
 export class Palco {
-  constructor(canvas, balao) {
-    this.canvas = canvas; this.balao = balao; this.balaoTexto = balao.querySelector('span');
-    this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  constructor(canvas, balao, { leve = false } = {}) {
+    this.canvas = canvas; this.balao = balao; this.balaoTexto = balao.querySelector('span'); this.leve = leve;
+    // modo leve (tablet): sem antialias, resolução menor e materiais simples
+    this.renderer = new WebGLRenderer({ canvas, antialias: !leve, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = NeutralToneMapping; this.renderer.toneMappingExposure = 1.0;
     this.cena = new Scene();
     this.camera = new PerspectiveCamera(26, 1, 1, 100); this.camera.position.set(0, 0, 22);
-    const pm = new PMREMGenerator(this.renderer);
-    this.cena.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    if (!leve) { const pm = new PMREMGenerator(this.renderer); this.cena.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; }
 
     this.cena.add(new HemisphereLight(0xCFE4FF, 0x0A1430, 0.9));
     const chave = new DirectionalLight(0xFFFFFF, 2.0); chave.position.set(4, 6, 9); this.cena.add(chave);
@@ -78,17 +100,34 @@ export class Palco {
     this.arrasto = null; this.combo = 0; this.ultimoToque = 0;
     this.modoOuro = 0;
     this.t = 0;
+    if (leve) aliviarMateriais(this.cena);
     this.redimensionar();
     addEventListener('resize', () => this.redimensionar());
     this.ligarToque();
+    this.compilarShaders();
     this.ultimoT = performance.now();
-    const loop = (now) => { const dt = Math.max(0, Math.min(0.05, (now - this.ultimoT) / 1000)); this.ultimoT = now; if (dt > 0) this.quadro(dt); requestAnimationFrame(loop); };
+    // Movimento pelo tempo real: se o aparelho perder quadros, a cena (inclusive a moto) avança em passos
+    // menores até alcançar o relógio, em vez de ficar em câmera lenta. Só o último passo desenha.
+    const loop = (now) => {
+      let dt = Math.max(0, Math.min(0.1, (now - this.ultimoT) / 1000)); this.ultimoT = now; // no máximo 3 passos por quadro
+      while (dt > 1e-4) { const passo = Math.min(dt, 1 / 30); dt -= passo; this.quadro(passo, dt <= 1e-4); }
+      requestAnimationFrame(loop);
+    };
     requestAnimationFrame(loop);
+  }
+
+  // Compila todos os shaders já na abertura (inclusive moto, caneca e jato, que começam escondidos),
+  // para não travar na primeira vez que aparecem.
+  compilarShaders() {
+    const escondidos = [];
+    this.cena.traverse((o) => { if (!o.visible) { escondidos.push(o); o.visible = true; } });
+    try { this.renderer.compile(this.cena, this.camera); } catch (e) { console.warn(e); }
+    escondidos.forEach((o) => { o.visible = false; });
   }
 
   redimensionar() {
     const w = innerWidth; const h = innerHeight;
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+    this.renderer.setPixelRatio(this.leve ? Math.min(devicePixelRatio || 1, 1) * 0.85 : Math.min(devicePixelRatio || 1, 1.75));
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     this.w = w; this.h = h;
@@ -258,7 +297,7 @@ export class Palco {
     if (instantaneo) { this.pos.copy(alvo); this.escala = escala; this.vel = {}; }
   }
 
-  quadro(dt) {
+  quadro(dt, desenhar = true) {
     this.t += dt;
     const eg = this.egon;
     this.calcAlvo(false);
@@ -336,6 +375,7 @@ export class Palco {
     this.contraA.color.copy(new Color(0x3D8BFF).lerp(new Color(0xFFB627), this.modoOuro));
     this.contraB.color.copy(new Color(0x38D5FF).lerp(new Color(0xFFD86B), this.modoOuro));
 
+    if (!desenhar) return;
     this.posicionarBalao();
     this.renderer.render(this.cena, this.camera);
   }
@@ -365,12 +405,20 @@ export class Palco {
     const raioPx = 0.55 * this.escala * this.pxPorUnidade;
     const lado = this.opcAncora.balao || (p.x > this.w * 0.55 ? 'esq' : 'dir');
     const bw = b.offsetWidth; const bh = b.offsetHeight;
+    // EGon fora da tela (entrando pela borda): o balão espera ele aparecer
+    b.style.opacity = p.x > -raioPx && p.x < this.w + raioPx ? '' : '0';
+    // o balão nunca cobre o topo da tela (logo, etapas, botão de sair)
+    if (!this.minYEm || performance.now() - this.minYEm > 500) {
+      const topo = document.querySelector('.tela.ativa .topo');
+      this.minY = topo ? Math.max(12, topo.getBoundingClientRect().bottom + 8) : 12; this.minYEm = performance.now();
+    }
+    const minY = this.minY;
     let x; let y;
     let ladoFinal = lado;
-    if (lado === 'cima' && p.y - raioPx * 1.05 - bh - 14 < 10) ladoFinal = p.x > this.w * 0.5 ? 'esq' : 'dir'; // sem espaço em cima
+    if (lado === 'cima' && p.y - raioPx * 1.05 - bh - 14 < minY) ladoFinal = p.x > this.w * 0.5 ? 'esq' : 'dir'; // sem espaço em cima
     if (ladoFinal !== 'cima') { const cabeEsq = p.x - raioPx - bw - 10 > 8; const cabeDir = p.x + raioPx + bw + 10 < this.w - 8; if (ladoFinal === 'esq' && !cabeEsq && cabeDir) ladoFinal = 'dir'; if (ladoFinal === 'dir' && !cabeDir && cabeEsq) ladoFinal = 'esq'; }
     if (ladoFinal === 'cima') { x = p.x - bw / 2; y = p.y - raioPx * 1.05 - bh - 14; } else if (ladoFinal === 'esq') { x = p.x - raioPx - bw - 10; y = p.y - raioPx * 1.1 - bh * 0.35; } else { x = p.x + raioPx + 10; y = p.y - raioPx * 1.1 - bh * 0.35; }
-    x = clamp(x, 16, this.w - bw - 16); y = clamp(y, 12, this.h - bh - 12);
+    x = clamp(x, 24, this.w - bw - 24); y = clamp(y, Math.min(minY, this.h - bh - 12), this.h - bh - 12);
     b.dataset.lado = ladoFinal;
     b.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   }

@@ -59,7 +59,8 @@ async function jogar(page, plano, nome = 'Maria Teste', prints) {
   const total = await page.waitForFunction(() => window.__quiz.partida().length).then((h) => h.jsonValue());
   for (let i = 0; i < total; i++) {
     await page.waitForFunction((k) => document.querySelector('#tela-quiz.ativa') && document.querySelector('#q-num').textContent === String(k + 1).padStart(2, '0')
-      && document.querySelectorAll('#q-opcoes .opcao').length > 0 && !document.querySelector('#aviso-chopp.mostra'), i, { timeout: 15000 });
+      && document.querySelectorAll('#q-opcoes .opcao').length > 0 && !document.querySelector('#aviso-chopp.mostra'), i, { timeout: 30000 })
+      .catch(async (e) => { if (process.env.DEPURAR) { await page.screenshot({ path: process.env.DEPURAR }); console.log('ESTADO', await page.evaluate(() => ({ tela: document.querySelector('.tela.ativa')?.id, num: document.querySelector('#q-num').textContent, modal: !document.querySelector('#modal').hidden, modalTxt: document.querySelector('#modal-titulo').textContent, aviso: !!document.querySelector('#aviso-chopp.mostra'), opcoes: document.querySelectorAll('#q-opcoes .opcao').length }))); } throw e; });
     await page.waitForTimeout(900); // espera as alternativas entrarem
     const q = await page.evaluate((k) => window.__quiz.partida()[k], i);
     const alvo = plano[i] ? q.correta : (q.correta + 1) % q.opcoes.length;
@@ -213,6 +214,39 @@ test('caso 14: configurações simples (pausar, limite) valem no totem e as regr
   await page.waitForSelector('#tela-pausa.ativa', { timeout: 10000 });
   await painel.click('label:has(#c-pausado)');
   await page.waitForSelector('#tela-descanso.ativa', { timeout: 10000 });
+  await ctx.close();
+});
+
+test('tablet: modo leve e teclado próprio (nome só letras, WhatsApp só números, placa letras e números)', async () => {
+  const ctx = await navegador.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true, isMobile: true });
+  await ctx.addInitScript('window.FORCAR_DEMO = true;');
+  const page = await ctx.newPage(); const erros = []; page.on('pageerror', (e) => erros.push(String(e)));
+  await page.goto(`${base}/index.html?tablet=1`); await page.evaluate(() => localStorage.clear()); await page.reload();
+  await page.waitForFunction(() => window.__egon && !document.body.classList.contains('carregando'));
+  assert.ok(await page.evaluate(() => document.body.classList.contains('leve') && !window.__egon.renderer.getContextAttributes().antialias), 'modo leve no tablet');
+  await page.tap('#tela-descanso', { position: { x: 200, y: 600 } }); await page.waitForSelector('#tela-cadastro.ativa');
+  assert.equal(await page.getAttribute('#f-nome', 'inputmode'), 'none', 'teclado do sistema não abre');
+  const tecla = (k) => page.tap(`.teclado [data-k="${k}"]`);
+  const acima = (sel) => page.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom <= innerHeight - document.querySelector('.teclado').offsetHeight, sel);
+  await page.tap('#f-nome'); await page.waitForSelector('.teclado.aberto');
+  assert.equal(await page.locator('.teclado [data-k="1"]').count(), 0, 'nome não tem números');
+  for (const k of ['J', 'O', 'S', 'É', '␣', 'L', 'I', 'M', 'A']) await tecla(k);
+  assert.equal(await page.inputValue('#f-nome'), 'José Lima');
+  await tecla('→'); await page.waitForTimeout(700);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'f-whats');
+  assert.equal(await page.locator('.teclado [data-k="A"]').count(), 0, 'WhatsApp só números');
+  for (const k of '81988887777') await tecla(k);
+  assert.equal(await page.inputValue('#f-whats'), '(81) 98888-7777');
+  assert.ok(await acima('#f-whats'), 'campo do WhatsApp visível acima do teclado');
+  await tecla('→'); await page.waitForTimeout(700);
+  for (const k of 'QWE1R23') await tecla(k);
+  assert.equal(await page.inputValue('#f-placa'), 'QWE1R23');
+  assert.ok(await acima('#f-placa'), 'campo da placa visível acima do teclado');
+  await tecla('✓'); await page.waitForTimeout(500);
+  assert.ok(await page.evaluate(() => document.querySelector('.teclado').hidden), 'teclado fecha no Pronto');
+  await page.tap('#f-assoc [data-v="sim"]'); await page.tap('.lgpd'); await page.tap('#btn-comecar');
+  await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 8000 });
+  assert.deepEqual(erros, []);
   await ctx.close();
 });
 

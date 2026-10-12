@@ -3,11 +3,15 @@ import {
   pendentes, reenviarPendentes, leadsLocais, aplicarLimpeza,
 } from './data.js';
 import { Palco } from './palco.js';
+import { modoTablet, modoLeve } from './dispositivo.js';
+import { criarTeclado } from './teclado.js';
 import { Fundo, Efeitos } from './fx.js';
 import { tocar, destravarAudio, alternarSom, somLigado, somDoEvento } from './som.js';
 import { normalizarRegras, sortearPartida, avaliar, gerarCodigo, chaveConjunto, limiteRecentes } from './regras.js';
 
 const $ = (s) => document.querySelector(s);
+document.body.classList.toggle('tablet', modoTablet);
+document.body.classList.toggle('leve', modoLeve);
 const LETRAS = 'ABCD';
 const INATIVIDADE_MS = 150000;   // sem toques por 2,5 min: pergunta "Ainda está aí?"
 const AVISO_S = 30;               // e espera mais 30 s antes de voltar ao início
@@ -67,7 +71,7 @@ document.addEventListener('focusout', () => setTimeout(medidas, 400));
 
 // ---------- camadas ----------
 function criarPalco() {
-  try { return new Palco($('#palco'), $('#balao')); } catch (e) {
+  try { return new Palco($('#palco'), $('#balao'), { leve: modoLeve }); } catch (e) {
     console.warn('EGon 3D indisponível neste aparelho; o quiz segue sem ele.', e);
     $('#palco').hidden = true;
     const nada = () => {}; const vazio = { x: 0, y: 0 };
@@ -79,8 +83,8 @@ function criarPalco() {
   }
 }
 const palco = criarPalco();
-const fundo = new Fundo($('#fx-fundo'));
-const fx = new Efeitos($('#fx'));
+const fundo = new Fundo($('#fx-fundo'), { leve: modoLeve });
+const fx = new Efeitos($('#fx'), { leve: modoLeve });
 window.__egon = palco; // ajuda na manutenção pelo console e nos testes automáticos
 window.__quiz = { partida: () => partida, escolhas: () => escolhas, regras: () => regras, cena: (i) => { cenaToken += 1; aplicarCena(CENAS[i]); }, estado: () => ({ cenaToken, cenaLonga, telaAtual }) };
 
@@ -363,6 +367,18 @@ $('#f-lgpd').addEventListener('change', (e) => {
   valido.lgpd = e.target.checked; atualizarMedidor(); $('.lgpd').classList.remove('invalido'); salvarSessao();
   if (e.target.checked && !restaurando) { tocar('escolha'); palco.acaoTemp('joinha', 1400); palco.expressaoTemp('feliz', 1400); palco.falar('Combinado! 🤝', 1600); }
 });
+// Tablet: teclado próprio do quiz (o do sistema não abre). "Próximo" passa para o campo seguinte.
+const teclado = modoTablet ? criarTeclado({
+  campos: [[fNome, 'nome'], [fWhats, 'whats'], [fPlaca, 'placa']],
+  tocar,
+  aoAbrir: () => requestAnimationFrame(ajustarTeclado),
+  aoFechar: () => setTimeout(ajustarTeclado, 30),
+  aoProximo: (inp, tipo) => {
+    if (tipo === 'nome') fWhats.focus();
+    else if (tipo === 'whats' && !fPlaca.closest('.campo').classList.contains('sem-placa') && !valido.placa) fPlaca.focus();
+    else teclado.fechar();
+  },
+}) : null;
 fNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fWhats.focus(); } });
 fWhats.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fPlaca.focus(); } });
 fPlaca.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fPlaca.blur(); } });
@@ -389,12 +405,13 @@ fAssoc.addEventListener('click', (e) => {
 // Com o teclado aberto, sobe o cartão para o campo em foco ficar visível.
 function ajustarTeclado() {
   const form = $('#form'); const el = document.activeElement;
-  const vv = window.visualViewport; const alturaVisivel = vv ? vv.height : innerHeight;
-  if (!el || el.tagName !== 'INPUT' || telaAtual !== 'cadastro') { form.style.transform = ''; return; }
-  const atualDesloc = Number(form.dataset.desloc || 0);
-  const r = el.getBoundingClientRect(); const fundoCampo = r.bottom + atualDesloc;
-  const margem = 24; const desloc = Math.max(0, fundoCampo - (alturaVisivel - margem));
-  form.dataset.desloc = desloc; form.style.transform = desloc ? `translateY(${-desloc}px)` : '';
+  const vv = window.visualViewport; const alturaVisivel = teclado?.aberto ? teclado.topo() : (vv ? vv.height : innerHeight);
+  // Desloca pela margem (a animação de entrada da tela trava o transform do cartão).
+  if (!el || el.tagName !== 'INPUT' || telaAtual !== 'cadastro') { form.style.marginTop = ''; return; }
+  const mt = parseFloat(getComputedStyle(form).marginTop) || 0; // deslocamento atual (pode estar no meio da animação)
+  const r = el.getBoundingClientRect(); const fundoCampo = r.bottom - mt;
+  const margem = 24; const desloc = Math.max(0, Math.round(fundoCampo - (alturaVisivel - margem)));
+  form.dataset.desloc = desloc; form.style.marginTop = desloc ? `${-desloc}px` : '';
 }
 window.visualViewport?.addEventListener('resize', ajustarTeclado);
 document.addEventListener('focusout', () => setTimeout(ajustarTeclado, 120));
@@ -667,7 +684,7 @@ function mostrarResultado({ av, ganhou, esgotado, codigo, nomeCompleto, hora }, 
     setTimeout(() => fx.chuva(140), 1300);
     setTimeout(() => { palco.acao('brinde'); }, 4200);
     let k = 0; clearInterval(fogosTimer);
-    fogosTimer = setInterval(() => { if (++k > 5) { clearInterval(fogosTimer); return; } fx.fogos(innerWidth * (k % 2 ? 0.08 + Math.random() * 0.3 : 0.6 + Math.random() * 0.35), innerHeight * (0.08 + Math.random() * 0.1)); }, 900);
+    fogosTimer = setInterval(() => { if (++k > 5) { clearInterval(fogosTimer); return; } fx.fogos(innerWidth * (0.06 + Math.random() * 0.38), innerHeight * (0.12 + Math.random() * 0.18)); }, 900); // fogos do lado do EGon, longe do título e do cupom
   } else if (av.cumpriuRegra && esgotado) {
     palco.caneca(false); palco.acao('joinha'); palco.expressao('feliz');
     setTimeout(() => { tocar('fim'); fx.chuva(70); palco.falar('Mandou bem demais!', 2800); }, 650);
@@ -877,5 +894,12 @@ setInterval(() => { if (navigator.onLine) reenviarPendentes(); }, 60000); // gar
 (document.fonts?.ready || Promise.resolve()).then(() => setTimeout(() => document.body.classList.remove('carregando'), 150));
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const tinhaVersao = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    setInterval(() => { if (navigator.onLine) reg.update().catch(() => {}); }, 20 * 60000); // totem ligado o dia todo pega a versão nova
+  }).catch(() => {});
+  // Chegou versão nova: recarrega só quando ninguém está jogando (tela inicial, sem sessão em andamento).
+  let atualizar = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinhaVersao) atualizar = true; });
+  setInterval(() => { if (atualizar && telaAtual === 'descanso' && !document.querySelector('.modal:not([hidden])')) location.reload(); }, 5000);
 }

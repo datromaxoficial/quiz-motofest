@@ -601,3 +601,111 @@ body.retrato .campo input { height: calc(var(--u) * 9.4); }
 .modal-acoes { flex-wrap: wrap; }
 .modal-acoes > * { flex: 1 1 100%; }
 #r-msg[hidden] { display: none; }
+
+/* ================= polimento: um só sistema de cor (marinho + dourado), dourado nobre, hierarquia de quiosque ================= */
+/* fase "valendo chopp": base marinho com brilho dourado vindo do alto, nada de fundo marrom */
+body.fase-ouro #fundo { background: radial-gradient(70% 60% at 82% 6%, rgba(255,171,2,.30), transparent 62%), radial-gradient(120% 100% at 50% 30%, #0A2350 0%, #04122E 50%, var(--noite) 85%); }
+body.fase-ouro .a1 { background: #8A5A00; opacity: .26; } body.fase-ouro .a2 { background: #C88A10; opacity: .18; } body.fase-ouro .a3 { background: #1C3A8A; opacity: .3; }
+body.fase-ouro .opcao { background: rgba(0,20,47,.72); border: 1.5px solid rgba(255,171,2,.42); }
+body.fase-ouro .opcao.certo { background: linear-gradient(100deg, rgba(43,214,123,.32), rgba(43,214,123,.12)); border-color: var(--certo); }
+body.fase-ouro .opcao.errado { background: rgba(255,77,106,.2); border-color: var(--errado); }
+/* letras das alternativas: dourado sobre marinho (azul fica só no fundo) */
+.opcao .letra { background: rgba(0,20,47,.6); color: var(--marca); border: 1px solid rgba(255,171,2,.35); }
+.progresso li .mini-chopp { font-size: calc(var(--u) * 2.3); top: calc(var(--u) * -2.9); }
+
+/* pergunta: tamanho de quiosque, bloco centrado, sem vão entre pergunta e alternativas */
+body:not(.retrato) .q-texto { font-size: calc(var(--u) * 4.3); line-height: 1.13; min-height: 0; max-width: 17em; }
+body:not(.retrato) .opcoes { margin-top: calc(var(--u) * 3); max-width: calc(var(--u) * 74); }
+body:not(.retrato) .opcao { padding-top: calc(var(--u) * 1.8); padding-bottom: calc(var(--u) * 1.8); font-size: calc(var(--u) * 2.55); }
+
+/* cadastro: botão incompleto com cara de "falta pouco", não de quebrado */
+#btn-comecar.falta { filter: none; background: rgba(0,20,47,.55); color: rgba(255,209,102,.8); box-shadow: inset 0 0 0 2px rgba(255,171,2,.38); }
+.assoc-pergunta { max-width: 18em; text-wrap: balance; }
+body:not(.retrato) .lgpd { font-size: calc(var(--u) * 1.5); }
+body:not(.retrato) #ancora-cadastro { top: calc(var(--u) * 27); height: calc(var(--u) * 43); }
+
+/* tela inicial: passos legíveis */
+body:not(.retrato) .passos li { font-size: calc(var(--u) * 1.6); }
+
+/* vitória: o cupom é o herói; confete passa por trás do texto e do cupom */
+#tela-resultado.ativa.vitoria { z-index: 9; }
+#tela-resultado.vitoria .placar small { color: #FFF3D6; }
+#tela-resultado.vitoria .voucher { transform-origin: 0 50%; }
+body:not(.retrato) #tela-resultado.vitoria .voucher { transform: scale(1.06); margin-bottom: calc(var(--u) * 1); }
+#tela-resultado.vitoria .resultado-acoes .btn-principal { background: rgba(0,20,47,.55); color: var(--marca-claro); box-shadow: inset 0 0 0 2px rgba(255,171,2,.6); }
+#r-anel { stroke: var(--marca); }
+.volta b { color: #FFF3D6; }
+
+/* derrota: correção legível, "errou" sem vermelho sobre vermelho */
+#tela-resultado.derrota .placar > span { background-image: linear-gradient(180deg, #fff, #FFE3A3); }
+.revisao { gap: calc(var(--u) * .9); }
+body:not(.retrato) .rev-pergunta { font-size: calc(var(--u) * 1.9); }
+body:not(.retrato) .rev-linha { font-size: calc(var(--u) * 1.7); }
+.rev-linha.errada b { color: rgba(255,255,255,.62); text-decoration-color: var(--errado); }
+
+/* avisos e folha da placa: assinatura da marca (filete dourado), ícones dourados */
+.modal-caixa { position: relative; overflow: hidden; border-color: rgba(255,171,2,.28); }
+.modal-caixa::before { content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: linear-gradient(90deg, transparent, var(--marca), transparent); }
+.fo-icone { color: var(--marca); background: rgba(0,20,47,.6); border-color: rgba(255,171,2,.4); }
+.folha-opcoes button:active { border-color: var(--marca); background: rgba(255,171,2,.12); }
+.modal-caixa p { text-wrap: balance; }
+
+/* polimento 2: fase dourada limpa (marinho puro + uma luz dourada), etapas acertadas em dourado, correção enxuta */
+body.fase-ouro #fundo { background: radial-gradient(60% 50% at 75% 0%, rgba(255,171,2,.28), transparent 70%), radial-gradient(80% 30% at 50% 100%, rgba(255,171,2,.12), transparent), #00142F; }
+body.fase-ouro .aurora { opacity: 0 !important; }
+.progresso li.certo { background: var(--marca); border-color: var(--marca); color: var(--marca-escuro); }
+.progresso li.passou::before, .progresso li.atual::before { background: rgba(255,171,2,.6); }
+.revisao li > div { min-width: 0; }
+.revisao li.ok .rev-linha { display: none; }
+.revisao li.ok .rev-pergunta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.revisao li.ok { align-items: center; }
+
+/* ================= MODO LEVE (tablet): sem desfoques, fundo simples, animações só com transform/opacity ================= */
+body.leve *, body.leve *::before, body.leve *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+body.leve .aurora, body.leve .grao, body.leve .holofote { display: none; }
+body.leve #fundo { background: radial-gradient(110% 90% at 72% 18%, #0B2C6E 0%, #061A44 40%, var(--noite) 80%); }
+body.leve.fase-ouro #fundo { background: radial-gradient(60% 50% at 75% 0%, rgba(255,171,2,.26), transparent 70%), #00142F; }
+body.leve .cartao { background: linear-gradient(160deg, #11295C, #0A1C44 65%); }
+body.leve .opcao { background: rgba(14,34,78,.92); }
+body.leve.fase-ouro .opcao { background: rgba(0,20,47,.92); }
+body.leve .modal, body.leve .status { background: rgba(2,8,23,.86); }
+body.leve .tela.ativa .e { animation-name: entrar-leve; }
+body.leve .tela.saindo .e { animation-name: sair-leve; }
+body.leve .opcao { animation-name: opcao-entra-leve; }
+body.leve .opcao.apagada { filter: none; opacity: .3; }
+body.leve .aviso-chopp.mostra .aviso-titulo span { animation-name: carimbo-leve; }
+body.leve .cta-luz, body.leve .voucher-luz { display: none; }
+@keyframes entrar-leve { from { opacity: 0; transform: translateY(calc(var(--u) * 3.5)); } to { opacity: 1; transform: none; } }
+@keyframes sair-leve { to { opacity: 0; transform: translateY(calc(var(--u) * -2.5)) scale(.98); } }
+@keyframes opcao-entra-leve { from { opacity: 0; transform: translateX(calc(var(--u) * -6)) scale(.96); } }
+@keyframes carimbo-leve { from { opacity: 0; transform: scale(2.4) rotate(-6deg); } to { opacity: 1; transform: none; } }
+
+/* ================= TECLADO PRÓPRIO DO QUIZ (tablet) ================= */
+.teclado { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding: calc(var(--u) * 1.2) calc(var(--u) * 2) calc(var(--u) * 1.6);
+  background: linear-gradient(180deg, #0A1E46, #00142F); border-top: 1px solid rgba(255,171,2,.35); box-shadow: 0 calc(var(--u) * -2) calc(var(--u) * 5) rgba(0,4,16,.55);
+  transform: translateY(100%); transition: transform .22s var(--suave); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.teclado[hidden] { display: none; }
+.teclado.aberto { transform: none; }
+.teclado::before { content: ''; position: absolute; left: 15%; right: 15%; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--marca), transparent); }
+.tec-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: calc(var(--u) * 1); }
+.tec-titulo { font-weight: 800; font-size: calc(var(--u) * 1.6); letter-spacing: .12em; text-transform: uppercase; color: var(--marca-claro); }
+.tec-fechar { font-weight: 800; font-size: calc(var(--u) * 1.6); color: var(--texto-2); padding: .5em 1em; border-radius: 99px; border: 1px solid var(--vidro-borda); }
+.tec-teclas { display: flex; flex-direction: column; gap: calc(var(--u) * .8); max-width: calc(var(--u) * 112); margin: 0 auto; }
+.tec-linha { display: flex; gap: calc(var(--u) * .8); justify-content: center; }
+.tec { flex: 1 1 0; max-width: calc(var(--u) * 9); height: calc(var(--u) * 6); border-radius: calc(var(--u) * 1.2); font-weight: 800; font-size: calc(var(--u) * 2.5); color: #fff;
+  background: linear-gradient(180deg, #1A3570, #12295A); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 calc(var(--u) * .35) 0 #061436; transition: transform .08s, background .12s; }
+.tec:active, .tec.apertou { transform: translateY(calc(var(--u) * .25)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 calc(var(--u) * .1) 0 #061436; }
+.tec:active { background: linear-gradient(180deg, #24448C, #1A3570); }
+.tec-apagar { max-width: calc(var(--u) * 14); flex-grow: 1.6; color: var(--marca-claro); font-size: calc(var(--u) * 2.4); }
+.tec-espaco { max-width: calc(var(--u) * 56); flex-grow: 6; font-size: calc(var(--u) * 1.8); color: var(--texto-2); text-transform: uppercase; letter-spacing: .1em; }
+.tec-prox { max-width: calc(var(--u) * 26); flex-grow: 2.6; color: var(--marca-escuro); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: calc(var(--u) * 2.2);
+  background: linear-gradient(180deg, #FFE08A, var(--marca) 60%, #E89400); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 calc(var(--u) * .35) 0 #8A5600; }
+.teclado[data-tipo="nome"] .tec-linha:nth-child(4) .tec { font-size: calc(var(--u) * 2.2); color: var(--marca-claro); }
+.teclado[data-tipo="whats"] .tec-teclas { max-width: calc(var(--u) * 46); }
+.teclado[data-tipo="whats"] .tec { max-width: none; height: calc(var(--u) * 6.4); font-size: calc(var(--u) * 3); }
+.teclado[data-tipo="whats"] .tec-prox { font-size: calc(var(--u) * 1.9); }
+.teclado[data-tipo="placa"] .tec-linha:first-child .tec { color: var(--marca-claro); }
+body.retrato .tec { height: calc(var(--u) * 7.4); font-size: calc(var(--u) * 3); }
+body.retrato .tec-titulo, body.retrato .tec-fechar { font-size: calc(var(--u) * 2.2); }
+/* com o teclado, o cartão sobe suave e o campo em foco fica visível */
+#form { transition: transform .45s var(--suave), margin-top .3s var(--suave); }

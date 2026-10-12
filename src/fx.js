@@ -13,19 +13,20 @@ function sprite(r, g, b) {
 }
 
 export class Fundo {
-  constructor(cv) {
+  constructor(cv, { leve = false } = {}) {
+    this.leve = leve;
     this.cv = cv; this.ctx = cv.getContext('2d');
     this.ouro = 0; this.ouroAlvo = 0; this.warp = 0; this.warpAlvo = 0; this.px = 0; this.py = 0;
     this.redim(); addEventListener('resize', () => this.redim());
     addEventListener('pointermove', (e) => { this.px = e.clientX / innerWidth - 0.5; this.py = e.clientY / innerHeight - 0.5; }, { passive: true });
     this.sprAzul = sprite(80, 170, 255); this.sprOuro = sprite(255, 196, 80);
-    this.luzes = Array.from({ length: 46 }, () => this.novaLuz(true));
+    this.luzes = Array.from({ length: leve ? 16 : 46 }, () => this.novaLuz(true));
     let ult = performance.now();
     const loop = (t) => { const dt = Math.max(0, Math.min(0.05, (t - ult) / 1000)); ult = t; this.quadro(dt, t / 1000); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
   redim() {
-    this.dpr = Math.min(devicePixelRatio || 1, 1.5);
+    this.dpr = this.leve ? 1 : Math.min(devicePixelRatio || 1, 1.5);
     this.w = innerWidth; this.h = innerHeight;
     this.cv.width = this.w * this.dpr; this.cv.height = this.h * this.dpr;
   }
@@ -71,11 +72,11 @@ export class Fundo {
 const CORES_FESTA = ['#FFC531', '#FF9F1C', '#1D6CF0', '#4FD8FF', '#FFFFFF', '#2BD67B', '#FF5C8A'];
 
 export class Efeitos {
-  constructor(cv) {
-    this.cv = cv; this.ctx = cv.getContext('2d'); this.ps = []; this.rodando = false;
+  constructor(cv, { leve = false } = {}) {
+    this.cv = cv; this.ctx = cv.getContext('2d'); this.ps = []; this.rodando = false; this.leve = leve;
     this.redim(); addEventListener('resize', () => this.redim());
   }
-  redim() { this.dpr = Math.min(devicePixelRatio || 1, 1.5); this.w = innerWidth; this.h = innerHeight; this.cv.width = this.w * this.dpr; this.cv.height = this.h * this.dpr; }
+  redim() { this.dpr = this.leve ? 1 : Math.min(devicePixelRatio || 1, 1.5); this.w = innerWidth; this.h = innerHeight; this.cv.width = this.w * this.dpr; this.cv.height = this.h * this.dpr; }
   add(p) { this.ps.push(p); if (!this.rodando) { this.rodando = true; this.ult = performance.now(); requestAnimationFrame((t) => this.quadro(t)); } }
 
   onda(x, y, cor = 'rgba(120,200,255,') { this.add({ tipo: 'onda', x, y, vida: 0, dur: 0.55, cor }); }
@@ -91,7 +92,7 @@ export class Efeitos {
   }
   zzz(x, y) { this.add({ tipo: 'z', x, y, vx: rnd(10, 30), vy: -45, g: 0, atrito: 0, vida: 0, dur: 2.4, cor: '#9FD8FF', r: rnd(18, 28), rot: rnd(-0.3, 0.1), vr: 0.2 }); }
   bolhas(n = 30) {
-    for (let i = 0; i < n; i++) this.add({ tipo: 'bolha', x: rnd(0, this.w), y: this.h + rnd(0, 200), vx: rnd(-10, 10), vy: rnd(-320, -160), g: 0, atrito: 0, vida: 0, dur: rnd(2.2, 3.6), cor: '#FFE6A0', r: rnd(4, 14), fase: rnd(0, TAU) });
+    for (let i = 0; i < Math.ceil(n * 0.4); i++) this.add({ tipo: 'bolha', x: rnd(0, this.w), y: this.h + rnd(0, 200), vx: rnd(-10, 10), vy: rnd(-320, -160), g: 0, atrito: 0, vida: 0, dur: rnd(2.2, 3.6), cor: '#FFE6A0', r: rnd(4, 14), fase: rnd(0, TAU) });
   }
   canhao(lado, n = 70) { // confete saindo dos cantos de baixo
     const x = lado < 0 ? 0 : this.w; const y = this.h;
@@ -130,7 +131,7 @@ export class Efeitos {
         case 'coracao': { const s = p.r / 10; ctx.scale(s, s); ctx.fillStyle = p.cor; ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-11, -2, -6, -11, 0, -5); ctx.bezierCurveTo(6, -11, 11, -2, 0, 6); ctx.fill(); break; }
         case 'confete': { p.giro += p.vgiro * dt; ctx.scale(1, Math.cos(p.giro)); ctx.fillStyle = p.cor; ctx.fillRect(-p.r / 2, -p.r * 0.32, p.r, p.r * 0.64); break; }
         case 'fita': { p.giro += p.vgiro * dt; ctx.strokeStyle = p.cor; ctx.lineWidth = 3.5; ctx.beginPath(); for (let i = 0; i <= 6; i++) ctx.lineTo(i * 3 - 9, Math.sin(p.giro + i) * 4); ctx.stroke(); break; }
-        case 'bolha': { ctx.restore(); ctx.save(); ctx.globalAlpha = a * 0.75; const x = p.x + Math.sin(p.vida * 3 + p.fase) * 8; ctx.strokeStyle = p.cor; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25, 0, TAU); ctx.fill(); break; }
+        case 'bolha': { ctx.restore(); ctx.save(); ctx.globalAlpha = a * 0.28; const x = p.x + Math.sin(p.vida * 3 + p.fase) * 8; ctx.strokeStyle = p.cor; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25, 0, TAU); ctx.fill(); break; }
         case 'z': { ctx.fillStyle = p.cor; ctx.font = `900 italic ${p.r}px Archivo, sans-serif`; ctx.fillText('z', 0, 0); break; }
         default:
       }

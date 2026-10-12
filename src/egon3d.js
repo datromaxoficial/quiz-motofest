@@ -8,6 +8,8 @@ import {
 } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
+// modo leve (tablet): o brilho do rosto LED sem desfoque, que é caro de desenhar
+const semBrilho = () => typeof document !== 'undefined' && !!document.body?.classList.contains('leve');
 const { clamp, lerp } = MathUtils;
 const TAU = Math.PI * 2;
 const suave = (atual, alvo, k, dt) => atual + (alvo - atual) * (1 - Math.exp(-k * dt));
@@ -139,7 +141,7 @@ class Rosto {
     }
     ctx.fill();
     // brilho suave em volta dos pontos
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = 'blur(7px)'; ctx.globalAlpha = 0.85; ctx.drawImage(this.cv, 0, 0); ctx.restore();
+    if (!semBrilho()) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = 'blur(7px)'; ctx.globalAlpha = 0.85; ctx.drawImage(this.cv, 0, 0); ctx.restore(); }
     this.tex.needsUpdate = true;
   }
 }

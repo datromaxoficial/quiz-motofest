@@ -395,7 +395,7 @@ main { flex: 1; width: 100%; }
 
 .lista-info { color: var(--texto-2); font-size: 13px; margin: -6px 2px 12px; }
 td.c-assoc { white-space: nowrap; }
-@media (max-width: 860px) { td.c-assoc .tag::before { content: "Associado: "; } }
+@media (max-width: 860px) { td.c-assoc .tag::before { content: "Associado:\00a0"; } }
 
 /* ---------- login no celular: tudo cabe na tela (formulário + rodapé DatroMax), sem rolar ---------- */
 .erro:empty { display: none; }
