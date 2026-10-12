@@ -1,5 +1,6 @@
 // Sons sintetizados na hora (Web Audio): funcionam offline e não pesam no app.
 let ctx = null; let mestre = null;
+const audio = () => ctx; const saida = () => mestre;
 let ligado = (() => { try { return localStorage.getItem('eg_som') !== '0'; } catch { return true; } })();
 
 let somEvento = true; // chave geral vinda das configurações do painel
@@ -33,6 +34,55 @@ function ruido(ini, dur, { vol = 0.3, de = 400, ate = 4000 } = {}) {
   src.connect(f); f.connect(g); g.connect(mestre); src.start(ini); src.stop(ini + dur);
 }
 
+// Ronco de moto: cada explosão do motor é um "estalo" de ruído filtrado (escapamento), no ritmo da rotação,
+// com um corpo grave por baixo e saturação leve. Marcha lenta -> acelerada -> segura -> alivia.
+const ondas = new WeakMap();
+export function motor(t, ctx = audio(), mestre = saida()) {
+  const dur = 2.0;
+  let ondaPulso = ondas.get(ctx);
+  if (!ondaPulso) {
+    const n = 40; const re = new Float32Array(n); const im = new Float32Array(n); const duty = 0.18;
+    for (let k = 1; k < n; k++) re[k] = (2 * Math.sin(Math.PI * k * duty)) / (Math.PI * k); // trem de pulsos estreitos
+    ondaPulso = ctx.createPeriodicWave(re, im, { disableNormalization: false }); ondas.set(ctx, ondaPulso);
+  }
+  const rpm = (param, mult = 1) => {
+    param.setValueAtTime(26 * mult, t);
+    param.linearRampToValueAtTime(30 * mult, t + 0.22);          // marcha lenta
+    param.exponentialRampToValueAtTime(88 * mult, t + 0.62);     // acelera
+    param.linearRampToValueAtTime(92 * mult, t + 0.95);          // segura
+    param.exponentialRampToValueAtTime(48 * mult, t + 1.7);      // alivia
+    param.linearRampToValueAtTime(44 * mult, t + dur);
+  };
+  // explosões: ruído modulado pelos pulsos do motor
+  const len = Math.floor(ctx.sampleRate * dur); const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const ruidoSrc = ctx.createBufferSource(); ruidoSrc.buffer = buf;
+  const pulsos = ctx.createOscillator(); pulsos.setPeriodicWave(ondaPulso); rpm(pulsos.frequency);
+  const irregular = ctx.createOscillator(); const irrG = ctx.createGain(); irregular.frequency.value = 9; irrG.gain.value = 1.6; // motor não é metrônomo
+  irregular.connect(irrG); irrG.connect(pulsos.frequency);
+  const am = ctx.createGain(); am.gain.value = 0; pulsos.connect(am.gain);
+  const escap = ctx.createBiquadFilter(); escap.type = 'bandpass'; escap.Q.value = 1.1;
+  escap.frequency.setValueAtTime(300, t); escap.frequency.exponentialRampToValueAtTime(850, t + 0.62); escap.frequency.exponentialRampToValueAtTime(480, t + 1.7);
+  ruidoSrc.connect(am); am.connect(escap);
+  // corpo do motor: harmônicos da rotação (2x), bem filtrado
+  const corpo = ctx.createOscillator(); corpo.type = 'sawtooth'; rpm(corpo.frequency, 2);
+  const corpoF = ctx.createBiquadFilter(); corpoF.type = 'lowpass'; corpoF.Q.value = 0.7;
+  corpoF.frequency.setValueAtTime(260, t); corpoF.frequency.exponentialRampToValueAtTime(620, t + 0.62); corpoF.frequency.exponentialRampToValueAtTime(380, t + 1.7);
+  const corpoG = ctx.createGain(); corpoG.gain.value = 0.55; corpo.connect(corpoF); corpoF.connect(corpoG);
+  // mistura + saturação leve (dá o "rasgado" do escapamento)
+  const soma = ctx.createGain(); soma.gain.value = 1;
+  const escapG = ctx.createGain(); escapG.gain.value = 1.4; escap.connect(escapG); escapG.connect(soma); corpoG.connect(soma);
+  const sat = ctx.createWaveShaper(); const curva = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; curva[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+  sat.curve = curva;
+  const corteAgudo = ctx.createBiquadFilter(); corteAgudo.type = 'lowpass'; corteAgudo.frequency.value = 2400;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(0.28, t + 0.05);
+  env.gain.linearRampToValueAtTime(0.36, t + 0.62); env.gain.linearRampToValueAtTime(0.32, t + 1.3); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  soma.connect(sat); sat.connect(corteAgudo); corteAgudo.connect(env); env.connect(mestre);
+  [ruidoSrc, pulsos, irregular, corpo].forEach((n) => { n.start(t); n.stop(t + dur + 0.05); });
+}
+
 const SONS = {
   toque: (t) => tom(880, t, 0.08, { tipo: 'triangle', vol: 0.18, ate: 1320 }),
   escolha: (t) => { tom(520, t, 0.1, { tipo: 'triangle', vol: 0.25 }); tom(780, t + 0.05, 0.12, { tipo: 'triangle', vol: 0.2 }); },
@@ -50,13 +100,7 @@ const SONS = {
     [262, 330, 392].forEach((f) => tom(f, t + 0.66, 0.9, { tipo: 'sine', vol: 0.12 }));
   },
   fim: (t) => { [392, 523, 659].forEach((f, i) => tom(f, t + i * 0.12, 0.35, { tipo: 'triangle', vol: 0.2 })); },
-  vrum: (t) => { // partida + acelerada da moto
-    const o = ctx.createOscillator(); const g = ctx.createGain(); const f = ctx.createBiquadFilter();
-    o.type = 'sawtooth'; o.frequency.setValueAtTime(45, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.5); o.frequency.exponentialRampToValueAtTime(70, t + 1.4);
-    f.type = 'lowpass'; f.frequency.value = 900; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
-    o.connect(f); f.connect(g); g.connect(mestre); o.start(t); o.stop(t + 1.7);
-    ruido(t, 0.5, { vol: 0.08, de: 200, ate: 900 });
-  },
+  vrum: (t) => motor(t),
   digita: (t) => tom(1400 + Math.random() * 300, t, 0.03, { tipo: 'square', vol: 0.03 }),
 };
 

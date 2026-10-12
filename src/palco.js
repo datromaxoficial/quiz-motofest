@@ -324,8 +324,8 @@ export class Palco {
         this.voando = false; eg.setAcao(this.temp ? eg.acao : this.acaoBase); eg.gesto('aterrissa'); this.aoPousar?.();
       }
       const vx = this.vel.x || 0; const vy = this.vel.y || 0;
-      eg.inclVooZ = clamp(-vx * 0.035, -0.45, 0.45);
-      eg.inclVooX = clamp(Math.abs(vx) * 0.02 - vy * 0.01, -0.2, 0.35);
+      eg.inclVooZ = this.pilotando ? 0 : clamp(-vx * 0.035, -0.45, 0.45);
+      eg.inclVooX = this.pilotando ? 0 : clamp(Math.abs(vx) * 0.02 - vy * 0.01, -0.2, 0.35);
       if (this.pilotando && Math.abs(vx) > 0.3) this.dirMoto = Math.sign(vx);
       const viraAlvo = this.pilotando || this.moto.visivel() ? this.dirMoto * (Math.abs(vx) > 0.3 ? 1.2 : 0.95)
         : (this.voando || arrastando) ? clamp(vx * 0.06, -0.9, 0.9) : this.andando && Math.abs(vx) > 0.05 ? Math.sign(vx) * 0.8 : 0;

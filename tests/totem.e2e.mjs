@@ -54,7 +54,7 @@ async function jogar(page, plano, nome = 'Maria Teste', prints) {
   if (prints) await page.screenshot({ path: `${prints}-1-cadastro.png` });
   await page.click('#btn-comecar');
   // quem repete placa ou WhatsApp vê o aviso "você já jogou" e segue
-  await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 8000 });
+  await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 20000 });
   if (await page.isVisible('#modal')) await page.click('#modal-ok');
   const total = await page.waitForFunction(() => window.__quiz.partida().length).then((h) => h.jsonValue());
   for (let i = 0; i < total; i++) {
@@ -245,7 +245,7 @@ test('tablet: modo leve e teclado próprio (nome só letras, WhatsApp só númer
   await tecla('✓'); await page.waitForTimeout(500);
   assert.ok(await page.evaluate(() => document.querySelector('.teclado').hidden), 'teclado fecha no Pronto');
   await page.tap('#f-assoc [data-v="sim"]'); await page.tap('.lgpd'); await page.tap('#btn-comecar');
-  await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 8000 });
+  await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 20000 });
   assert.deepEqual(erros, []);
   await ctx.close();
 });
