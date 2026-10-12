@@ -2,7 +2,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight, PointLight, Color, Vector2, Vector3,
   Raycaster, PMREMGenerator, Mesh, PlaneGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace, AdditiveBlending,
-  NeutralToneMapping, MathUtils, Plane, MeshPhongMaterial,
+  NeutralToneMapping, MathUtils, Plane, MeshStandardMaterial,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Egon } from './egon3d.js';
@@ -10,19 +10,19 @@ import { criarMoto, PONTOS_MOTO } from './moto3d.js';
 
 const { clamp } = MathUtils;
 
-// Modo leve: troca os materiais PBR (físicos, com verniz) por Phong, bem mais barato na GPU do tablet,
-// mantendo cor, brilho, transparência e textura.
+// Tablet: troca os materiais "físicos" (com verniz, os mais caros) por PBR padrão, mantendo cor, brilho,
+// metal, reflexo do ambiente, transparência e textura. O visual fica praticamente igual ao do PC.
 function aliviarMateriais(raiz) {
   const trocas = new Map();
   raiz.traverse((o) => {
     if (!o.isMesh) return;
     const leve = (m) => {
-      if (!m || !(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial)) return m;
+      if (!m || !m.isMeshPhysicalMaterial) return m;
       if (!trocas.has(m)) {
-        const n = new MeshPhongMaterial({
+        const n = new MeshStandardMaterial({
           color: m.color, map: m.map, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, emissiveMap: m.emissiveMap,
+          roughness: Math.max(0.12, (m.roughness ?? 0.5) * 0.9), metalness: m.metalness ?? 0, envMapIntensity: (m.envMapIntensity ?? 1) * 1.15,
           transparent: m.transparent, opacity: m.opacity, side: m.side, depthWrite: m.depthWrite, visible: m.visible,
-          shininess: Math.round(10 + (1 - (m.roughness ?? 0.5)) * 90), specular: m.metalness > 0.5 ? 0x999999 : 0x2a2a2a,
         });
         n.userData.original = m; trocas.set(m, n);
       }
@@ -66,13 +66,15 @@ function texturaSombra() {
 export class Palco {
   constructor(canvas, balao, { leve = false } = {}) {
     this.canvas = canvas; this.balao = balao; this.balaoTexto = balao.querySelector('span'); this.leve = leve;
-    // modo leve (tablet): sem antialias, resolução menor e materiais simples
-    this.renderer = new WebGLRenderer({ canvas, antialias: !leve, alpha: true, powerPreference: 'high-performance' });
+    // tablet: bordas suaves (antialias) e resolução da tela, que se ajusta sozinha se o aparelho não der conta
+    this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.prMax = leve ? Math.min(devicePixelRatio || 1, 1.5) : Math.min(devicePixelRatio || 1, 1.75);
+    this.pr = this.prMax;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = NeutralToneMapping; this.renderer.toneMappingExposure = 1.0;
     this.cena = new Scene();
     this.camera = new PerspectiveCamera(26, 1, 1, 100); this.camera.position.set(0, 0, 22);
-    if (!leve) { const pm = new PMREMGenerator(this.renderer); this.cena.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; }
+    const pm = new PMREMGenerator(this.renderer); this.cena.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
 
     this.cena.add(new HemisphereLight(0xCFE4FF, 0x0A1430, 0.9));
     const chave = new DirectionalLight(0xFFFFFF, 2.0); chave.position.set(4, 6, 9); this.cena.add(chave);
@@ -101,6 +103,9 @@ export class Palco {
     this.modoOuro = 0;
     this.t = 0;
     if (leve) aliviarMateriais(this.cena);
+    // texturas (rosto LED, emblemas) nítidas também vistas de lado
+    const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    this.cena.traverse((o) => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach((m) => { if (m.map) { m.map.anisotropy = aniso; m.map.needsUpdate = true; } }); });
     this.redimensionar();
     addEventListener('resize', () => this.redimensionar());
     this.ligarToque();
@@ -108,7 +113,9 @@ export class Palco {
     this.ultimoT = performance.now();
     // Movimento pelo tempo real: se o aparelho perder quadros, a cena (inclusive a moto) avança em passos
     // menores até alcançar o relógio, em vez de ficar em câmera lenta. Só o último passo desenha.
+    this.qJanela = { t0: performance.now(), n: 0, bons: 0 };
     const loop = (now) => {
+      if (this.leve) this.ajustarQualidade(now);
       let dt = Math.max(0, Math.min(0.1, (now - this.ultimoT) / 1000)); this.ultimoT = now; // no máximo 3 passos por quadro
       while (dt > 1e-4) { const passo = Math.min(dt, 1 / 30); dt -= passo; this.quadro(passo, dt <= 1e-4); }
       requestAnimationFrame(loop);
@@ -125,9 +132,23 @@ export class Palco {
     escondidos.forEach((o) => { o.visible = false; });
   }
 
+  // Resolução dinâmica (tablet): mede os quadros por segundo a cada 2 s; se cair abaixo de ~40, reduz um pouco a
+  // resolução do 3D; se sobrar folga, volta a subir até a resolução da tela. Nunca abaixo de 1x.
+  ajustarQualidade(now) {
+    const j = this.qJanela; j.n += 1;
+    const dur = now - j.t0; if (dur < 2000) return;
+    const fps = (j.n * 1000) / dur; j.t0 = now; j.n = 0;
+    if (document.hidden) return;
+    let novo = this.pr;
+    if (fps < 40 && this.pr > 1) { novo = Math.max(1, this.pr - 0.15); j.bons = 0; }
+    else if (fps > 56 && this.pr < this.prMax) { j.bons += 1; if (j.bons >= 2) { novo = Math.min(this.prMax, this.pr + 0.1); j.bons = 0; } }
+    else j.bons = 0;
+    if (Math.abs(novo - this.pr) > 0.01) { this.pr = novo; this.redimensionar(); }
+  }
+
   redimensionar() {
     const w = innerWidth; const h = innerHeight;
-    this.renderer.setPixelRatio(this.leve ? Math.min(devicePixelRatio || 1, 1) * 0.85 : Math.min(devicePixelRatio || 1, 1.75));
+    this.renderer.setPixelRatio(this.pr ?? Math.min(devicePixelRatio || 1, 1.75));
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     this.w = w; this.h = h;

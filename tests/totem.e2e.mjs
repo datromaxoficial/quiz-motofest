@@ -223,7 +223,7 @@ test('tablet: modo leve e teclado próprio (nome só letras, WhatsApp só númer
   const page = await ctx.newPage(); const erros = []; page.on('pageerror', (e) => erros.push(String(e)));
   await page.goto(`${base}/index.html?tablet=1`); await page.evaluate(() => localStorage.clear()); await page.reload();
   await page.waitForFunction(() => window.__egon && !document.body.classList.contains('carregando'));
-  assert.ok(await page.evaluate(() => document.body.classList.contains('leve') && !window.__egon.renderer.getContextAttributes().antialias), 'modo leve no tablet');
+  assert.ok(await page.evaluate(() => document.body.classList.contains('leve') && window.__egon.renderer.getContextAttributes().antialias), 'modo leve no tablet, com bordas suaves');
   await page.tap('#tela-descanso', { position: { x: 200, y: 600 } }); await page.waitForSelector('#tela-cadastro.ativa');
   assert.equal(await page.getAttribute('#f-nome', 'inputmode'), 'none', 'teclado do sistema não abre');
   const tecla = (k) => page.tap(`.teclado [data-k="${k}"]`);

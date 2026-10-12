@@ -142,6 +142,13 @@ class Rosto {
     ctx.fill();
     // brilho suave em volta dos pontos
     if (!semBrilho()) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = 'blur(7px)'; ctx.globalAlpha = 0.85; ctx.drawImage(this.cv, 0, 0); ctx.restore(); }
+    else {
+      if (!this.brilhoCv) { this.brilhoCv = document.createElement('canvas'); this.brilhoCv.width = Math.ceil(W / 6); this.brilhoCv.height = Math.ceil(H / 6); this.brilhoCtx = this.brilhoCv.getContext('2d'); }
+      const bc = this.brilhoCtx; bc.clearRect(0, 0, this.brilhoCv.width, this.brilhoCv.height); bc.imageSmoothingEnabled = true;
+      bc.drawImage(this.cv, 0, 0, this.brilhoCv.width, this.brilhoCv.height);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.9; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(this.brilhoCv, 0, 0, W, H); ctx.restore();
+    }
     this.tex.needsUpdate = true;
   }
 }
