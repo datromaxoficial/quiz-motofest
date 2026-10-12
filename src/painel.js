@@ -421,7 +421,14 @@ observarLogin((u) => {
   $('#btn-sair').hidden = !u || modoDemo; $('#ao-vivo').hidden = !u || modoDemo;
   if (!u) return;
   requestAnimationFrame(moverPilula);
-  desligar.push(observarLeads((l) => { todosLeads = l; separarLeads(); render(); }));
+  const ligarLeads = () => {
+    const parar = observarLeads((l) => { $('#aviso-nuvem').hidden = true; todosLeads = l; separarLeads(); render(); }, () => {
+      $('#aviso-nuvem').hidden = false;
+      const t = setTimeout(ligarLeads, 120000); desligar.push(() => clearTimeout(t));
+    });
+    desligar.push(() => parar());
+  };
+  ligarLeads();
   desligar.push(observarStats((s) => { stats = s; render(); }));
   desligar.push(observarConfig((c) => { config = c; if (!editando) carregarRascunho(); separarLeads(); render(); }));
 });

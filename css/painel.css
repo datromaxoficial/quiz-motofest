@@ -432,3 +432,4 @@ body:has(#login:not([hidden])) .rodape-dm { padding-top: 4px; }
   .login-cartao .info { display: none; }
 }
 @media (max-width: 860px) and (max-height: 600px) { .login-logo { margin-bottom: 14px; } }
+.aviso-nuvem { margin-bottom: 16px; padding: 12px 16px; border-radius: 14px; background: rgba(255,171,2,.12); border: 1px solid rgba(255,171,2,.4); color: var(--ouro-claro); font-size: 13.5px; line-height: 1.45; }

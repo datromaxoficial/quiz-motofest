@@ -134,9 +134,11 @@ export function salvarLead(lead) {
     return;
   }
   // Sem await: offline o Firestore guarda na fila (no próprio tablet) e envia quando a conexão voltar.
+  enviando.add(lead.id);
   setDoc(doc(db, 'leads', lead.id), { ...lead, createdAt: serverTimestamp() })
     .then(() => marcarSincronizado(lead.id))
-    .catch((e) => console.warn('lead não enviado', e));
+    .catch((e) => console.warn('lead não enviado', e))
+    .finally(() => enviando.delete(lead.id));
   if (lead.placa && lead.status !== 'incompleto') {
     setDoc(doc(db, 'placas', lead.placa), { n: increment(1) }, { merge: true }).catch(() => {});
   }
@@ -148,14 +150,19 @@ export function salvarLead(lead) {
 
 // Reenvia o que ainda não teve confirmação da nuvem (ex.: tablet desligado antes de sincronizar).
 // Nunca reenvia a situação da entrega: quem manda nisso é o balcão (painel).
+// Cada participação tem no máximo um envio em andamento: sem internet o Firestore já guarda o envio na fila
+// do próprio tablet, então repetir a cada minuto só gastaria cota de gravação quando a conexão voltasse.
+const enviando = new Set();
 export function reenviarPendentes() {
   if (modoDemo) return;
   const corte = Number(ler(LS.limpeza, 0)) || 0;
-  leadsLocais().filter((l) => !l._sync && (l.clientTime || 0) >= corte).forEach((l) => {
+  leadsLocais().filter((l) => !l._sync && !enviando.has(l.id) && (l.clientTime || 0) >= corte).forEach((l) => {
     const { _sync, entregue, entregueEm, ...dados } = l;
+    enviando.add(l.id);
     setDoc(doc(db, 'leads', l.id), dados, { merge: true })
       .then(() => marcarSincronizado(l.id))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => enviando.delete(l.id));
   });
 }
 
@@ -168,7 +175,7 @@ export async function marcarEntregue(id, entregue) {
   await updateDoc(doc(db, 'leads', id), dados);
 }
 
-export function observarLeads(cb) {
+export function observarLeads(cb, aoErro) {
   if (modoDemo) {
     const f = () => cb(leadsLocais().map(({ _sync, ...l }) => l));
     f(); ouvintes.add(f);
@@ -176,7 +183,8 @@ export function observarLeads(cb) {
   }
   return onSnapshot(query(collection(db, 'leads'), orderBy('clientTime', 'desc')), { includeMetadataChanges: false },
     (s) => cb(s.docs.map((d) => d.data())),
-    (e) => { console.error(e); cb([]); });
+    // Erro (sem internet demais ou limite do plano): mantém o que já está na tela e avisa; o painel tenta de novo.
+    (e) => { console.error(e); aoErro?.(e); });
 }
 
 // ---------- limpar dados de teste (painel, com senha) ----------
