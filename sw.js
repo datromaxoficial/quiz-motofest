@@ -2,7 +2,7 @@
 // com ou sem rede. Versão nova (build.sh troca a VERSAO): o navegador instala tudo de novo em segundo plano,
 // apaga o cache antigo e o totem recarrega sozinho quando volta para a tela inicial.
 // O painel continua "rede primeiro" (precisa dos dados ao vivo). Firebase não passa por aqui.
-const VERSAO = 'v20261015100327';
+const VERSAO = 'v20261015103917';
 const ARQUIVOS = [
   './', './index.html', './config.js', './manifest.json', './css/totem.css', './js/totem.js',
   './assets/logo-branco.svg', './assets/icone.png', './assets/motofest-2026.png',

@@ -21,6 +21,8 @@ const VOLTA_RESULTADO_S = 60; // tela final: 60 s para mostrar no balcão (ou to
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sorteio = (arr) => arr[(Math.random() * arr.length) | 0];
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+// Hora do cupom sempre no horário do evento (Gravatá-PE), mesmo que o relógio/fuso do tablet esteja errado.
+const horaDoEvento = () => { try { return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife' }); } catch { return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } };
 
 let config = null;
 let stats = { chopps: 0 };
@@ -651,7 +653,7 @@ function finalizar() {
   };
   salvarLead(lead);
   if (ganhou) stats.chopps += 1; // otimista, o snapshot corrige
-  const dados = { av, ganhou, esgotado, codigo, nomeCompleto: jogador.nome, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+  const dados = { av, ganhou, esgotado, codigo, nomeCompleto: jogador.nome, hora: horaDoEvento() };
   salvarSessao({ dados });
   mostrarResultado(dados);
 }
