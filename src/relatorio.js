@@ -41,34 +41,34 @@ export function textoWhats(c) {
   const dificil = perguntas.length ? perguntas.reduce((a, b) => (pct(b.ok, b.n) < pct(a.ok, a.n) ? b : a)) : null;
   const agora = new Date();
   const L = [
-    '*🏍️ QUIZ EXCLUSIVE GOLD*',
+    '*QUIZ EXCLUSIVE GOLD*',
     `_${EVENTO} · ${agora.toLocaleDateString('pt-BR')} às ${horaBR(agora)}_`,
     '',
-    '*👥 PARTICIPAÇÃO*',
+    '*PARTICIPAÇÃO*',
     `• Participações: *${m.total}*${m.unicos !== m.total ? ` (${m.unicos} pessoas)` : ''}`,
     `• Desistências: ${m.desistencias}`,
     '',
-    '*🍺 CHOPPS*',
+    '*CHOPPS*',
     `• Ganhos: *${ganhos}*${limite ? ` de ${limite} (restam ${Math.max(limite - ganhos, 0)})` : ''}`,
     `• Taxa de ganho: ${pct(m.chopps, m.total)}% de quem jogou`,
     '',
-    '*🛡️ PÚBLICO*',
+    '*PÚBLICO*',
     `• Associados EG: *${m.assoc}* (${pct(m.assoc, m.total)}%)`,
     `• Não associados: ${m.naoAssoc}`,
     `• Prospects (não associados com placa): *${m.prospects}*`,
     `• Sem placa informada: ${m.semPlaca}`,
     `• Placas repetidas: ${m.placasRepetidas}`,
     '',
-    '*🎯 QUIZ*',
+    '*QUIZ*',
     `• Acerto médio: ${m.acertoMedio}%`,
     ...(dificil ? [`• Mais difícil: "${dificil.texto}" (${pct(dificil.ok, dificil.n)}% de acerto)`] : []),
     ...(picoGeral ? [`• Horário de pico: *${doisDig(picoGeral.h)}h*${dias.length > 1 ? ` do dia ${picoGeral.dia.rotulo}` : ''} (${picoGeral.n} ${picoGeral.n === 1 ? 'participação' : 'participações'})`] : []),
   ];
   if (dias.length > 1) {
-    L.push('', '*📅 POR DIA*');
+    L.push('', '*POR DIA*');
     dias.forEach((d) => L.push(`• Dia ${d.numero} (${d.rotulo}): ${d.total} participações · ${d.chopps} chopps`));
   }
-  if (location.protocol === 'https:') L.push('', `🔗 Painel: ${location.origin}${location.pathname}`);
+  if (location.protocol === 'https:') L.push('', `Painel: ${location.origin}${location.pathname}`);
   return L.join('\n');
 }
 
