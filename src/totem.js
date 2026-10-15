@@ -435,7 +435,7 @@ document.addEventListener('focusout', () => setTimeout(ajustarTeclado, 120));
 
 $('#form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const nome = fNome.value.trim().replace(/\s+/g, ' ');
+  const nome = fNome.value.trim().replace(/\s+/g, ' ').slice(0, 120);
   const whats = soDigitos(fWhats.value);
   const placa = fPlaca.value.trim();
   const faltando = [];
@@ -610,11 +610,13 @@ async function avisoChopp() {
   modoOuro(true); tocar('chopp'); fundo.pulsoWarp(600);
   palco.irPara($('#ancora-aviso'), { semAnel: false, balao: 'dir' });
   palco.caneca(true, 0); palco.acao('segurar'); palco.expressao('coracao');
-  await espera(700); palco.nivelCaneca(1); fx.bolhas(36);
+  const segue = () => telaAtual === 'quiz';
+  await espera(700); if (!segue()) { a.classList.remove('mostra'); return; } palco.nivelCaneca(1); fx.bolhas(36);
   palco.falar('Agora vale chopp!! 🍺', 2400);
-  await espera(1500); palco.acaoTemp('brinde', 1400);
+  await espera(1500); if (!segue()) { a.classList.remove('mostra'); return; } palco.acaoTemp('brinde', 1400);
   await espera(1600);
   a.classList.remove('mostra');
+  if (!segue()) return;
   palco.irPara($('#ancora-quiz'), { semAnel: true, balao: 'cima' });
   await espera(250);
 }
@@ -892,6 +894,7 @@ $('#st-sair').onclick = () => { document.exitFullscreen?.().catch(() => {}); $('
 
 // ---------- início ----------
 observarStats((s) => { stats = s; });
+let pausando = false;
 observarConfig((c) => {
   const primeira = !config;
   config = c;
@@ -899,8 +902,14 @@ observarConfig((c) => {
   // limpeza feita no painel (dados de teste): apaga a cópia local e o histórico de sorteio
   if (aplicarLimpeza(c.limpezaEm)) { try { localStorage.removeItem('eg_conjuntos_recentes'); } catch { /* sem storage */ } }
   atualizarTextosRegra();
-  if (c.pausado) mostrar('pausa');
-  else if (telaAtual === 'pausa' || primeira) {
+  if (c.pausado) {
+    // tela final fica até acabar (o fim dela já vai para a pausa); cadastro/quiz em andamento vira desistência
+    if (telaAtual === 'resultado') return;
+    if ((telaAtual === 'cadastro' || telaAtual === 'quiz') && !pausando) { pausando = true; try { registrarAbandono('pausa'); } finally { pausando = false; } }
+    if (pausando) return; // salvar a desistência avisa a config de novo; a primeira chamada termina o serviço
+    if (telaAtual !== 'pausa') { limparSessao(); teclado?.fechar(); $('#modal').hidden = true; $('#folha-placa').hidden = true; $('#aviso-chopp').classList.remove('mostra'); fecharAviso(); document.activeElement?.blur(); }
+    mostrar('pausa');
+  } else if (telaAtual === 'pausa' || primeira) {
     if (primeira) { palco.irPara($(ANCORAS.descanso), { instantaneo: true }); if (retomarSessao()) return; }
     mostrar('descanso');
   }
@@ -918,5 +927,5 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Chegou versão nova: recarrega só quando ninguém está jogando (tela inicial, sem sessão em andamento).
   let atualizar = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinhaVersao) atualizar = true; });
-  setInterval(() => { if (atualizar && telaAtual === 'descanso' && !document.querySelector('.modal:not([hidden])')) location.reload(); }, 5000);
+  setInterval(() => { if (atualizar && telaAtual === 'descanso' && !document.querySelector('.modal:not([hidden]), .status:not([hidden])')) location.reload(); }, 5000);
 }

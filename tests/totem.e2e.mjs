@@ -209,7 +209,9 @@ test('caso 14: configurações simples (pausar, limite) valem no totem e as regr
   const r2 = await jogar(page, [1, 1, 1, 1, 1], 'Segunda Pessoa');
   assert.equal(r2.leads.at(-1).ganhouChopp, false, 'limite atingido: sem cupom');
   assert.equal(r2.leads.at(-1).choppEsgotado, true);
-  // pausar no painel -> totem mostra "Já voltamos!"
+  // pausar no painel -> totem mostra "Já voltamos!" (a tela do cupom não é interrompida: pausa ao sair dela)
+  await page.click('#tela-resultado [data-acao="inicio"]'); if (await page.isVisible('#modal')) await page.click('#modal-ok');
+  await page.waitForSelector('#tela-descanso.ativa');
   await painel.click('label:has(#c-pausado)');
   await page.waitForSelector('#tela-pausa.ativa', { timeout: 10000 });
   await painel.click('label:has(#c-pausado)');
@@ -255,6 +257,30 @@ test('tablet: modo leve e teclado próprio (nome só letras, WhatsApp só númer
   assert.ok(await page.evaluate(() => document.querySelector('.teclado').hidden), 'teclado fecha no Pronto');
   await page.tap('#f-assoc [data-v="sim"]'); await page.tap('.lgpd'); await page.tap('#btn-comecar');
   await page.waitForSelector('#modal:not([hidden]), #tela-quiz.ativa', { timeout: 20000 });
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('robustez: pausa no meio vira desistência, painel aguenta dados estranhos, nome limitado a 120', async () => {
+  const { ctx, page } = await abrirTotem({ width: 1280, height: 800 });
+  await page.click('#tela-descanso', { position: { x: 200, y: 600 } }); await page.waitForSelector('#tela-cadastro.ativa');
+  assert.equal(await page.getAttribute('#f-nome', 'maxlength'), '120');
+  await page.fill('#f-nome', 'Pedro Pausado'); await page.fill('#f-whats', '81977776666'); await page.click('.lgpd');
+  // painel pausa no meio do cadastro: totem vai para a pausa e registra a desistência
+  await page.evaluate(() => { const c = JSON.parse(localStorage.getItem('eg_config') || '{}'); localStorage.setItem('eg_config', JSON.stringify({ ...c, pausado: true })); window.dispatchEvent(new StorageEvent('storage', { key: 'eg_config' })); });
+  await page.waitForSelector('#tela-pausa.ativa', { timeout: 10000 });
+  const l = await page.evaluate(() => JSON.parse(localStorage.getItem('eg_leads') || '[]').at(-1));
+  assert.equal(l.status, 'incompleto'); assert.equal(l.motivo, 'pausa'); assert.equal(l.nome, 'Pedro Pausado');
+  assert.equal(await page.evaluate(() => localStorage.getItem('eg_sessao')), null, 'sem sessão para retomar');
+  // dados estranhos/antigos e tentativa de HTML no nome não quebram o painel
+  await page.evaluate(() => { const ls = JSON.parse(localStorage.getItem('eg_leads') || '[]'); ls.push({ id: 'z1', nome: '<img src=x onerror=window.__xss=1>', whatsapp: '81911112222', respostas: 'x', acertosDecisivas: '<b>3</b>', clientTime: Date.now(), status: 'completo', ganhouChopp: true, codigo: 'ZZZZ' }, { id: 'z2', respostas: [null, { texto: null }], clientTime: Date.now() }); localStorage.setItem('eg_leads', JSON.stringify(ls)); });
+  const erros = []; page.on('pageerror', (e) => erros.push(String(e)));
+  await page.goto(`${base}/painel.html`); await page.waitForSelector('#app:not([hidden])');
+  await page.click('[data-aba="participantes"]'); await page.waitForTimeout(500);
+  assert.ok(await page.locator('#tabela tr').count() >= 2);
+  const [d] = await Promise.all([page.waitForEvent('download'), page.click('#aba-participantes [data-exportar]')]);
+  assert.match(d.suggestedFilename(), /\.xlsx$/);
+  assert.equal(await page.evaluate(() => window.__xss), undefined, 'HTML no nome não roda');
   assert.deepEqual(erros, []);
   await ctx.close();
 });

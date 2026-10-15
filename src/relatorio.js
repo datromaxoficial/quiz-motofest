@@ -369,7 +369,7 @@ export async function gerarExcel(c) {
       const r = ws.addRow([`#${e.pos >= 0 ? e.pos + 1 : '?'}  ${e.texto}`, e.n ? e.ok / e.n : 0, `${e.n} ${e.n === 1 ? 'vez' : 'vezes'} · ${e.ok} ${e.ok === 1 ? 'acerto' : 'acertos'} · ${e.dec > e.n / 2 ? 'valendo chopp' : 'aquecimento'}`]);
       r.getCell(2).numFmt = '0%';
       r.eachCell((cel, col) => { cel.border = bordas; cel.font = { size: 10, bold: col === 2 }; cel.alignment = { vertical: 'middle', horizontal: col === 2 ? 'center' : 'left', wrapText: col === 1, indent: col === 2 ? 0 : 1 }; if (i % 2) cel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COR.zebra } }; });
-      r.height = Math.max(20, Math.ceil(e.texto.length / 38) * 14 + 6);
+      r.height = Math.max(20, Math.ceil(String(e.texto || '').length / 38) * 14 + 6);
     });
     const fim = ws.rowCount;
     if (fim >= ini) {

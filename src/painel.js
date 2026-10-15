@@ -1,5 +1,5 @@
 import {
-  modoDemo, DEFAULT_CONFIG, observarConfig, salvarConfig, observarStats,
+  modoDemo, DEFAULT_CONFIG, depoisDaLimpeza, observarConfig, salvarConfig, observarStats,
   observarLeads, observarLogin, entrar, sair, limparTudo,
 } from './data.js';
 import { normalizarRegras } from './regras.js';
@@ -20,9 +20,20 @@ let todosLeads = [];
 // Participações feitas antes da última limpeza (testes) nunca contam, mesmo que um tablet offline as envie depois.
 function separarLeads() {
   const corte = Number(config.limpezaEm) || 0;
-  const validos = todosLeads.filter((x) => (x.clientTime || 0) >= corte);
+  const validos = todosLeads.filter((x) => x && typeof x === 'object' && depoisDaLimpeza(x, corte)).map(normalizar);
   leads = validos.filter((x) => x.status !== 'incompleto');
   incompletos = validos.filter((x) => x.status === 'incompleto');
+}
+// Registro vindo da nuvem sempre no formato esperado (protege o painel de dados antigos ou estranhos).
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
+function normalizar(l) {
+  const respostas = Array.isArray(l.respostas) ? l.respostas.filter((r) => r && typeof r === 'object').map((r) => ({ ...r, texto: String(r.texto ?? ''), acertou: !!r.acertou, valeChopp: !!r.valeChopp })) : [];
+  return {
+    ...l, respostas, id: String(l.id ?? ''), nome: String(l.nome ?? ''), whatsapp: String(l.whatsapp ?? '').replace(/\D/g, '').slice(0, 15),
+    placa: String(l.placa ?? '').slice(0, 8), codigo: String(l.codigo ?? '').slice(0, 8), clientTime: Number(l.clientTime) || 0,
+    acertosDecisivas: num(l.acertosDecisivas), totalDecisivas: num(l.totalDecisivas), acertosAquecimento: num(l.acertosAquecimento), totalAquecimento: num(l.totalAquecimento), acertosChopp: num(l.acertosChopp),
+    ganhouChopp: l.ganhouChopp === true, associado: l.associado === true, lgpd: l.lgpd === true,
+  };
 }
 let config = DEFAULT_CONFIG;
 let stats = { chopps: 0 };
@@ -116,7 +127,7 @@ function mapaPlacas() {
 let placasCache = new Map();
 const vezesPlaca = (l) => (l.placa ? (placasCache.get(l.placa) || []).length : 0);
 const ehProspect = (l) => !l.associado && !!l.placa;
-const fmtMotivo = (m) => ({ inatividade: 'ficou sem tocar', cancelou: 'tocou em cancelar/sair', 'saiu da tela': 'fechou ou saiu da tela' }[m] || m || '');
+const fmtMotivo = (m) => ({ inatividade: 'ficou sem tocar', cancelou: 'tocou em cancelar/sair', 'saiu da tela': 'fechou ou saiu da tela', pausa: 'quiz pausado pelo painel' }[m] || m || '');
 
 // ---------- métricas ----------
 function metricas() {
@@ -144,7 +155,7 @@ function render() {
   contar($('#k-total'), m.total);
   $('#k-unicos').textContent = `${m.unicos} ${m.unicos === 1 ? 'pessoa' : 'pessoas'}`;
   const limite = Number(config.limiteChopps) || 0;
-  const ganhos = Math.max(stats.chopps, 0);
+  const ganhos = m.chopps;
   contar($('#k-chopps'), ganhos);
   $('#k-estoque').textContent = limite ? `de ${limite} · restam ${Math.max(limite - ganhos, 0)}` : 'sem limite';
   $('#k-barra').style.width = limite ? `${Math.min(pct(ganhos, limite), 100)}%` : '0';
@@ -266,7 +277,7 @@ function tabela() {
     const placaCel = `<div class="placa-cel">${p.placas.length
       ? p.placas.map((x) => { const v = (placasCache.get(x) || []).length; return `<span class="placa-mini">${esc(x)}</span>${v > 1 ? `<span class="tag alerta" title="Placa usada em ${v} participações">repetida ×${v}</span>` : ''}`; }).join('')
       : `<span class="tag">${esc(STATUS_PLACA[statusPlaca(l)] || 'sem placa')}</span>`}</div>`;
-    const whats = p.whatsapp ? `<a class="btn-whats" href="${linkWhats(p.whatsapp)}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp"><svg><use href="#p-whats"/></svg>${fmtWhats(p.whatsapp)}</a>` : '<span class="sub-tab">—</span>';
+    const whats = p.whatsapp ? `<a class="btn-whats" href="${linkWhats(p.whatsapp)}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp"><svg><use href="#p-whats"/></svg>${esc(fmtWhats(p.whatsapp))}</a>` : '<span class="sub-tab">—</span>';
     const assoc = p.assoc ? '<span class="tag sim">Sim</span>' : '<span class="tag">Não</span>';
     const tags = [
       !desist && !p.assoc && p.placas.length ? '<span class="tag prospect" title="Não associado e com veículo">prospect</span>' : '',
@@ -282,7 +293,7 @@ function tabela() {
     }
     const m = p.melhor;
     return `<tr style="--i:${Math.min(i, 20)}">${inicio}
-      <td class="c-acertos"><div class="acertos">${pontos(m)}<small>${acertosDec(m)}/${totalDec(m)} valendo chopp</small></div></td>
+      <td class="c-acertos"><div class="acertos">${pontos(m)}<small>${Number(acertosDec(m)) || 0}/${Number(totalDec(m)) || 0} valendo chopp</small></div></td>
       <td class="c-chopp">${p.chopps ? `<span class="ganhou"><span class="selo-chopp"><svg><use href="#p-chopp"/></svg>Ganhou</span>${p.cupons.map((c) => `<span class="cupom" title="Código do cupom">${esc(c)}</span>`).join('')}</span>` : `<span class="nao-ganhou">${m.choppEsgotado ? 'Acertou (esgotado)' : 'Não ganhou'}</span>`}</td>
       <td class="c-quando"><span class="quando">${quando(p.primeira)}</span></td>
     </tr>`;

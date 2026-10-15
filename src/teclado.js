@@ -64,7 +64,7 @@ export function criarTeclado({ campos, aoProximo, aoAbrir, aoFechar, tocar }) {
   function abrir(inp, t) {
     const mudou = tipo !== t; alvo = inp; tipo = t;
     if (mudou || el.hidden) desenhar();
-    if (el.hidden) { el.hidden = false; requestAnimationFrame(() => el.classList.add('aberto')); }
+    if (el.hidden || !el.classList.contains('aberto')) { el.hidden = false; requestAnimationFrame(() => { if (alvo) el.classList.add('aberto'); }); }
     aoAbrir?.(el, t);
   }
   function fechar() {
@@ -77,6 +77,7 @@ export function criarTeclado({ campos, aoProximo, aoAbrir, aoFechar, tocar }) {
     const inp = alvo; if (!inp) return;
     let v = inp.value;
     if (k === '⌫') v = v.slice(0, -1);
+    else if (inp.maxLength > 0 && v.length >= inp.maxLength) return;
     else if (k === '␣') { if (v && !v.endsWith(' ')) v += ' '; }
     else if (tipo === 'nome') v += letraNome(v, k);
     else v += k;

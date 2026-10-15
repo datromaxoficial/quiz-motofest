@@ -93,6 +93,9 @@ export const leadsLocais = () => ler(LS.leads, []);
 const resumoLocal = (l) => ({ id: l.id, status: l.status, whatsapp: l.whatsapp, placa: l.placa, nome: l.nome, ganhouChopp: l.ganhouChopp, clientTime: l.clientTime, _sync: true });
 
 const completos = () => leadsLocais().filter((l) => l.status !== 'incompleto');
+// Participação vale depois da limpeza se o tablet já tinha aplicado essa limpeza (marca) ou se foi feita depois dela
+// (relógio). Assim um tablet com relógio atrasado não perde participações reais.
+export const depoisDaLimpeza = (l, corte) => !corte || (Number(l.limpeza) || 0) >= corte || (Number(l.clientTime) || 0) >= corte;
 
 // Mesmo WhatsApp já terminou uma partida neste tablet.
 export function jaJogou(whatsapp) {
@@ -122,6 +125,7 @@ function marcarSincronizado(id) {
 }
 
 export function salvarLead(lead) {
+  lead = { ...lead, limpeza: Number(ler(LS.limpeza, 0)) || 0 };
   const ls = leadsLocais();
   ls.push({ ...lead, _sync: modoDemo });
   if (!gravar(LS.leads, ls) && !modoDemo) {
@@ -156,7 +160,7 @@ const enviando = new Set();
 export function reenviarPendentes() {
   if (modoDemo) return;
   const corte = Number(ler(LS.limpeza, 0)) || 0;
-  leadsLocais().filter((l) => !l._sync && !enviando.has(l.id) && (l.clientTime || 0) >= corte).forEach((l) => {
+  leadsLocais().filter((l) => !l._sync && !enviando.has(l.id) && depoisDaLimpeza(l, corte)).forEach((l) => {
     const { _sync, entregue, entregueEm, ...dados } = l;
     enviando.add(l.id);
     setDoc(doc(db, 'leads', l.id), dados, { merge: true })
@@ -218,7 +222,7 @@ export async function limparTudo(configAtual) {
 // Totem: aplica uma limpeza feita no painel (uma vez por limpeza).
 export function aplicarLimpeza(limpezaEm) {
   if (!limpezaEm || Number(ler(LS.limpeza, 0)) >= limpezaEm) return false;
-  gravar(LS.leads, leadsLocais().filter((l) => (l.clientTime || 0) >= limpezaEm));
+  gravar(LS.leads, leadsLocais().filter((l) => (Number(l.clientTime) || 0) >= limpezaEm));
   gravar(LS.limpeza, limpezaEm);
   if (modoDemo) gravar(LS.stats, { chopps: 0 });
   return true;
