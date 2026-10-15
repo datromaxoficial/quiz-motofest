@@ -7,20 +7,24 @@ const EVENTO = 'Gravatá Motofest 2026';
 const COR = { marinho: 'FF00142F', ouro: 'FFFFAB02', ouroClaro: 'FFFFF3D1', zebra: 'FFF3F6FB', borda: 'FFD5DDEA', texto: 'FF0B1A33', cinza: 'FF5B6B85', verde: 'FF1E8E50', verdeClaro: 'FFE3F6EA', vermelho: 'FFC23B3B', vermelhoClaro: 'FFFBE6E6', azul: 'FF1557D0', branco: 'FFFFFFFF' };
 
 const doisDig = (n) => String(n).padStart(2, '0');
-const dataBR = (t) => new Date(t).toLocaleDateString('pt-BR');
-const horaBR = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+// Tudo no horário do evento (Gravatá-PE), igual ao cupom, independente do fuso do aparelho.
+export const FUSO = 'America/Recife';
+const fmtPartes = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+export const partes = (t) => { const o = {}; fmtPartes.formatToParts(new Date(t)).forEach((p) => { o[p.type] = p.value; }); return { ano: +o.year, mes: +o.month, dia: +o.day, hora: +o.hour % 24, min: +o.minute }; };
+const dataBR = (t) => new Date(t).toLocaleDateString('pt-BR', { timeZone: FUSO });
+export const horaBR = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO });
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const chaveDia = (t) => new Date(t).toLocaleDateString('sv-SE');
+export const chaveDia = (t) => { const p = partes(t); return `${p.ano}-${doisDig(p.mes)}-${doisDig(p.dia)}`; };
 
 // ---------- números por dia e por hora (usados no gráfico, no Excel e no resumo) ----------
 export function porDiaHora(leads) {
   const dias = new Map();
   leads.forEach((l) => {
     const d = new Date(l.clientTime); const k = chaveDia(l.clientTime);
-    const dia = dias.get(k) || { chave: k, rotulo: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), semana: d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''), total: 0, chopps: 0, assoc: 0, prospects: 0, pessoas: new Set(), horas: new Map() };
+    const dia = dias.get(k) || { chave: k, rotulo: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: FUSO }), semana: d.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: FUSO }).replace('.', ''), total: 0, chopps: 0, assoc: 0, prospects: 0, pessoas: new Set(), horas: new Map() };
     dia.total += 1; if (l.ganhouChopp) dia.chopps += 1; if (l.associado) dia.assoc += 1; if (!l.associado && l.placa) dia.prospects += 1;
     dia.pessoas.add(l.whatsapp);
-    dia.horas.set(d.getHours(), (dia.horas.get(d.getHours()) || 0) + 1);
+    const h = partes(l.clientTime).hora; dia.horas.set(h, (dia.horas.get(h) || 0) + 1);
     dias.set(k, dia);
   });
   return [...dias.values()].sort((a, b) => a.chave.localeCompare(b.chave)).map((d, i) => {
@@ -40,7 +44,7 @@ export function textoWhats(c) {
   const agora = new Date();
   const L = [
     '*QUIZ EXCLUSIVE GOLD*',
-    `_${agora.toLocaleDateString('pt-BR')} · ${horaBR(agora)}_`,
+    `_${dataBR(agora)} · ${horaBR(agora)}_`,
     '',
     `Participações: *${m.total}*`,
     `Chopps ganhos: *${ganhos}*${limite ? ` de ${limite}` : ''}`,
@@ -74,7 +78,7 @@ function prepararAba(wb, nome, titulo, colunas, { paisagem = true, descricao = '
   const t = ws.getCell(1, 1); t.value = `QUIZ EXCLUSIVE GOLD  ·  ${titulo.toUpperCase()}`;
   t.font = { name: 'Calibri', size: 16, bold: true, color: { argb: COR.branco } };
   t.alignment = { vertical: 'middle', indent: 1 };
-  const s = ws.getCell(2, 1); s.value = `${EVENTO}  ·  gerado em ${new Date().toLocaleDateString('pt-BR')} às ${horaBR(Date.now())}`;
+  const s = ws.getCell(2, 1); s.value = `${EVENTO}  ·  gerado em ${dataBR(Date.now())} às ${horaBR(Date.now())}`;
   s.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COR.ouro } }; s.alignment = { vertical: 'middle', indent: 1 };
   const d = ws.getCell(3, 1); d.value = descricao;
   d.font = { name: 'Calibri', size: 9, italic: true, color: { argb: COR.cinza } }; d.alignment = { vertical: 'middle', indent: 1, wrapText: true };
@@ -126,7 +130,8 @@ function preencher(ws, colunas, linhas, { destaque, filtro = true } = {}) {
 }
 
 // Data/hora como valor de verdade (ordena e filtra no Excel), já no horário local.
-const dataLocal = (t) => { const d = new Date(t); return new Date(t - d.getTimezoneOffset() * 60000); };
+// data/hora para o Excel (que não tem fuso): os números do horário do evento
+const dataLocal = (t) => { const p = partes(t); return new Date(Date.UTC(p.ano, p.mes - 1, p.dia, p.hora, p.min)); };
 
 export async function gerarExcel(c) {
   const wb = new ExcelJS.Workbook();
@@ -211,7 +216,7 @@ export async function gerarExcel(c) {
         aq: `${c.acertosAq(l)}/${c.totalAq(l)}`, dec: `${c.acertosDec(l)}/${c.totalDec(l)}`,
         res: l.ganhouChopp ? 'GANHOU CHOPP' : l.choppEsgotado ? 'Acertou (esgotado)' : 'Não ganhou', res_cor: l.ganhouChopp ? COR.verde : l.choppEsgotado ? COR.azul : COR.cinza,
         cupom: l.codigo || '', cupom_cor: l.codigo ? COR.marinho : '',
-        obs: [l.repetido ? 'Jogou de novo' : '', vezes > 1 ? `Placa usada ${vezes}x` : '', l.placaRepetida ? 'Confirmou placa já usada' : ''].filter(Boolean).join(' · '),
+        obs: [l.repetido ? 'Jogou de novo' : '', vezes > 1 ? `Placa de ${vezes} pessoas` : '', l.placaRepetida ? 'Confirmou placa já usada' : ''].filter(Boolean).join(' · '),
         contato: caixa, anot: '',
         _ganhou: l.ganhouChopp,
       };
@@ -245,7 +250,7 @@ export async function gerarExcel(c) {
       { chave: 'nome', titulo: 'Nome', largura: 32, negrito: true, quebrar: true },
       { chave: 'whats', titulo: 'WhatsApp', largura: 18, link: true },
       { chave: 'placa', titulo: 'Placa', largura: 12, alinhar: 'center' },
-      { chave: 'vezes', titulo: 'Placa usada (vezes)', largura: 11, alinhar: 'center' },
+      { chave: 'vezes', titulo: 'Pessoas com a placa', largura: 11, alinhar: 'center' },
       { chave: 'ganhou', titulo: 'Ganhou chopp', largura: 11, alinhar: 'center' },
       { chave: 'data', titulo: 'Data', largura: 11, alinhar: 'center', formato: 'dd/mm/yyyy' },
       { chave: 'contato', titulo: 'Contato feito', largura: 10, alinhar: 'center' },
@@ -262,15 +267,18 @@ export async function gerarExcel(c) {
   {
     const cols = [
       { chave: 'placa', titulo: 'Placa', largura: 12, alinhar: 'center', negrito: true },
-      { chave: 'vezes', titulo: 'Vezes', largura: 8, alinhar: 'center' },
+      { chave: 'vezes', titulo: 'Pessoas', largura: 8, alinhar: 'center' },
       { chave: 'nomes', titulo: 'Nomes', largura: 46, quebrar: true },
       { chave: 'whats', titulo: 'WhatsApps', largura: 34, quebrar: true },
       { chave: 'assoc', titulo: 'Algum associado?', largura: 14, alinhar: 'center' },
     ];
     const ws = prepararAba(wb, 'Placas repetidas', 'Placas usadas por mais de uma pessoa', cols, { descricao: 'Mesma placa usada por pessoas diferentes.' });
-    preencher(ws, cols, [...c.placas.entries()].filter(([, ls]) => ls.length > 1).sort((a, b) => b[1].length - a[1].length).map(([placa, ls]) => ({
-      placa, vezes: ls.length, nomes: ls.map((l) => l.nome).join(' / '), whats: ls.map((l) => c.fmtWhats(l.whatsapp)).join(' / '), assoc: ls.some((l) => l.associado) ? 'Sim' : 'Não',
-    })));
+    // uma entrada por pessoa (WhatsApp); só entra placa usada por pessoas diferentes
+    const porPessoa = (ls) => [...new Map(ls.map((l) => [l.whatsapp, l])).values()];
+    preencher(ws, cols, [...c.placas.entries()].map(([placa, ls]) => [placa, porPessoa(ls), ls]).filter(([, ps]) => ps.length > 1)
+      .sort((a, b) => b[1].length - a[1].length).map(([placa, ps, ls]) => ({
+        placa, vezes: ps.length, nomes: ps.map((l) => l.nome).join(' / '), whats: ps.map((l) => c.fmtWhats(l.whatsapp)).join(' / '), assoc: ls.some((l) => l.associado) ? 'Sim' : 'Não',
+      })));
   }
 
   // ===== Desistências =====
@@ -379,7 +387,7 @@ export async function gerarExcel(c) {
 
   const buffer = await wb.xlsx.writeBuffer();
   const agora = new Date();
-  const nome = `quiz-exclusive-gold-${agora.toLocaleDateString('sv-SE')}-${doisDig(agora.getHours())}h${doisDig(agora.getMinutes())}.xlsx`;
+  const pa = partes(agora); const nome = `quiz-exclusive-gold-${chaveDia(agora)}-${doisDig(pa.hora)}h${doisDig(pa.min)}.xlsx`;
   return { blob: new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome };
 }
 

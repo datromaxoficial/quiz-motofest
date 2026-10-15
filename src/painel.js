@@ -1,11 +1,11 @@
 import {
-  modoDemo, DEFAULT_CONFIG, depoisDaLimpeza, observarConfig, salvarConfig, observarStats,
+  modoDemo, DEFAULT_CONFIG, depoisDaLimpeza, observarConfig, salvarConfig,
   observarLeads, observarLogin, entrar, sair, limparTudo,
 } from './data.js';
 import { normalizarRegras } from './regras.js';
 import { BANCO_PADRAO } from './banco.js';
 import { criarEgonMini } from './egon-mini.js';
-import { gerarExcel, textoWhats, porDiaHora, baixarArquivo } from './relatorio.js';
+import { gerarExcel, textoWhats, porDiaHora, baixarArquivo, FUSO, chaveDia } from './relatorio.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -36,7 +36,7 @@ function normalizar(l) {
   };
 }
 let config = DEFAULT_CONFIG;
-let stats = { chopps: 0 };
+const stats = { get chopps() { return leads.filter((l) => l.ganhouChopp).length; } }; // chopps = ganhadores depois da limpeza
 let rascunho = null;      // cópia editável da config
 let editando = false;
 let desligar = [];
@@ -125,7 +125,9 @@ function mapaPlacas() {
   return m;
 }
 let placasCache = new Map();
-const vezesPlaca = (l) => (l.placa ? (placasCache.get(l.placa) || []).length : 0);
+// pessoas diferentes (WhatsApps) que usaram a placa; a mesma pessoa jogando de novo não conta
+const pessoasPlaca = (placa) => new Set((placasCache.get(placa) || []).map((l) => l.whatsapp)).size;
+const vezesPlaca = (l) => (l.placa ? pessoasPlaca(l.placa) : 0);
 const ehProspect = (l) => !l.associado && !!l.placa;
 const fmtMotivo = (m) => ({ inatividade: 'ficou sem tocar', cancelou: 'tocou em cancelar/sair', 'saiu da tela': 'fechou ou saiu da tela', pausa: 'quiz pausado pelo painel' }[m] || m || '');
 
@@ -137,7 +139,7 @@ function metricas() {
   const assoc = leads.filter((l) => l.associado).length;
   const resp = leads.flatMap((l) => l.respostas || []);
   const acertos = resp.filter((r) => r.acertou).length;
-  const repetidas = [...placasCache.values()].filter((ls) => ls.length > 1);
+  const repetidas = [...placasCache.keys()].filter((x) => pessoasPlaca(x) > 1);
   const prospects = leads.filter(ehProspect).length;
   const semPlaca = leads.filter((l) => !l.placa).length;
   return { total, unicos, chopps, assoc, naoAssoc: total - assoc, acertoMedio: pct(acertos, resp.length),
@@ -242,7 +244,7 @@ function filtrados() {
   const pessoas = agruparPessoas(f === 'incompletos' ? incompletos : leads);
   return pessoas.filter((p) => {
     if (f === 'prospects' && !(!p.assoc && p.placas.length)) return false;
-    if (f === 'placa-repetida' && !p.placas.some((x) => (placasCache.get(x) || []).length > 1)) return false;
+    if (f === 'placa-repetida' && !p.placas.some((x) => pessoasPlaca(x) > 1)) return false;
     if (f === 'sem-placa' && p.placas.length) return false;
     if (f === 'chopp' && !p.chopps) return false;
     if (f === 'assoc' && !p.assoc) return false;
@@ -256,8 +258,8 @@ function filtrados() {
 const iniciais = (n) => String(n || '?').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
 const quando = (t) => {
   const d = new Date(t); const hoje = new Date();
-  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  return d.toDateString() === hoje.toDateString() ? `hoje, ${hora}` : `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, ${hora}`;
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO });
+  return chaveDia(d) === chaveDia(hoje) ? `hoje, ${hora}` : `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: FUSO })}, ${hora}`;
 };
 // Bolinhas de acerto: verde no aquecimento, dourado valendo chopp (vazia = errou).
 function pontos(l) {
@@ -275,13 +277,14 @@ function tabela() {
   $('#tabela').innerHTML = ls.map((p, i) => {
     const l = p.recente;
     const placaCel = `<div class="placa-cel">${p.placas.length
-      ? p.placas.map((x) => { const v = (placasCache.get(x) || []).length; return `<span class="placa-mini">${esc(x)}</span>${v > 1 ? `<span class="tag alerta" title="Placa usada em ${v} participações">repetida ×${v}</span>` : ''}`; }).join('')
+      ? p.placas.map((x) => { const v = pessoasPlaca(x); return `<span class="placa-mini">${esc(x)}</span>${v > 1 ? `<span class="tag alerta" title="Placa usada por ${v} pessoas">repetida · ${v} pessoas</span>` : ''}`; }).join('')
       : `<span class="tag">${esc(STATUS_PLACA[statusPlaca(l)] || 'sem placa')}</span>`}</div>`;
     const whats = p.whatsapp ? `<a class="btn-whats" href="${linkWhats(p.whatsapp)}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp"><svg><use href="#p-whats"/></svg>${esc(fmtWhats(p.whatsapp))}</a>` : '<span class="sub-tab">—</span>';
     const assoc = p.assoc ? '<span class="tag sim">Sim</span>' : '<span class="tag">Não</span>';
     const tags = [
       !desist && !p.assoc && p.placas.length ? '<span class="tag prospect" title="Não associado e com veículo">prospect</span>' : '',
       p.partidas.length > 1 ? `<span class="tag">jogou ${p.partidas.length}x</span>` : '',
+      p.chopps > 1 ? `<span class="tag alerta" title="Ganhou mais de um chopp jogando de novo">${p.chopps} chopps</span>` : '',
       desist ? '<span class="tag alerta">desistiu</span>' : '',
     ].join('');
     const pessoa = `<div class="pessoa"><span class="avatar ${p.chopps ? 'ouro' : desist ? 'cinza' : ''}">${esc(iniciais(p.nome))}</span><span class="pessoa-txt"><b>${p.nome ? esc(p.nome) : 'Sem autorização LGPD'}</b><span class="tags">${tags}</span></span></div>`;
@@ -302,7 +305,7 @@ function tabela() {
 
 // ---------- relatórios (Excel e resumo do WhatsApp ficam em relatorio.js) ----------
 const contexto = () => ({
-  leads, incompletos, stats, config, metricas, estatisticaPerguntas, placas: placasCache, vezesPlaca, ehProspect,
+  leads, incompletos, stats, config, metricas, estatisticaPerguntas, placas: placasCache, vezesPlaca, pessoasPlaca, ehProspect,
   statusPlacaTxt: (l) => (l.placa ? l.placa : ({ 'nao-lembra': 'Não lembra', 'sem-veiculo': 'Sem veículo', 'nao-informar': 'Não informou', incompleta: 'Incompleta' }[l.placaStatus] || '—')),
   fmtWhats, linkWhats, acertosAq, totalAq, acertosDec, totalDec, fmtMotivo,
 });
@@ -405,7 +408,7 @@ $('#c-limite').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 const SENHA_LIMPAR = '123';
 function abrirLimpeza() {
   $('#limpar-senha').value = ''; $('#limpar-ciente').checked = false; $('#limpar-erro').textContent = '';
-  $('#limpar-resumo').textContent = `${leads.length} participações, ${incompletos.length} desistências e ${Math.max(stats.chopps, 0)} chopps no contador.`;
+  $('#limpar-resumo').textContent = `${leads.length} participações, ${incompletos.length} desistências e ${stats.chopps} chopps.`;
   $('#dlg-limpar').hidden = false; setTimeout(() => $('#limpar-senha').focus(), 50);
 }
 $('#c-limpar').addEventListener('click', abrirLimpeza);
@@ -440,6 +443,5 @@ observarLogin((u) => {
     desligar.push(() => parar());
   };
   ligarLeads();
-  desligar.push(observarStats((s) => { stats = s; render(); }));
   desligar.push(observarConfig((c) => { config = c; if (!editando) carregarRascunho(); separarLeads(); render(); }));
 });

@@ -75,7 +75,17 @@ export function observarStats(cb) {
     f(); ouvintes.add(f);
     return () => ouvintes.delete(f);
   }
-  return onSnapshot(doc(db, 'stats', 'main'),
+  cbStats = cb; assinarStats();
+  return () => { cbStats = null; pararStats?.(); };
+}
+// Cada limpeza começa um contador novo (stats/chopps_<limpeza>): incrementos atrasados de testes feitos antes
+// da limpeza (tablet que estava offline) vão para o contador antigo e não entram na conta do evento.
+const docStats = (epoca) => doc(db, 'stats', epoca ? `chopps_${epoca}` : 'main');
+let cbStats = null; let pararStats = null;
+function assinarStats() {
+  pararStats?.(); if (!cbStats) return;
+  const cb = cbStats;
+  pararStats = onSnapshot(docStats(Number(ler(LS.limpeza, 0)) || 0),
     (s) => cb({ chopps: (s.exists() && s.data().chopsGiven) || 0 }),
     () => cb({ chopps: 0 }));
 }
@@ -147,7 +157,7 @@ export function salvarLead(lead) {
     setDoc(doc(db, 'placas', lead.placa), { n: increment(1) }, { merge: true }).catch(() => {});
   }
   if (lead.ganhouChopp) {
-    setDoc(doc(db, 'stats', 'main'), { chopsGiven: increment(1) }, { merge: true })
+    setDoc(docStats(lead.limpeza), { chopsGiven: increment(1) }, { merge: true })
       .catch((e) => console.warn('contador não enviado', e));
   }
 }
@@ -222,8 +232,15 @@ export async function limparTudo(configAtual) {
 // Totem: aplica uma limpeza feita no painel (uma vez por limpeza).
 export function aplicarLimpeza(limpezaEm) {
   if (!limpezaEm || Number(ler(LS.limpeza, 0)) >= limpezaEm) return false;
-  gravar(LS.leads, leadsLocais().filter((l) => (Number(l.clientTime) || 0) >= limpezaEm));
+  // Já na nuvem: a nuvem cuida (some da cópia local). Ainda não enviada e anterior à limpeza: não é apagada
+  // (o relógio do tablet pode estar errado); sai da fila de envio e fica guardada em eg_arquivo_limpeza.
+  const antes = (l) => (Number(l.clientTime) || 0) < limpezaEm;
+  const ls = leadsLocais();
+  const arquivo = ls.filter((l) => !l._sync && antes(l));
+  if (arquivo.length) gravar('eg_arquivo_limpeza', [...ler('eg_arquivo_limpeza', []), ...arquivo.map((l) => ({ ...l, arquivadoEm: Date.now(), limpezaAplicada: limpezaEm }))].slice(-500));
+  gravar(LS.leads, ls.filter((l) => !antes(l)));
   gravar(LS.limpeza, limpezaEm);
+  if (!modoDemo) assinarStats();
   if (modoDemo) gravar(LS.stats, { chopps: 0 });
   return true;
 }

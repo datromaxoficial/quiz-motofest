@@ -754,3 +754,16 @@ body.retrato.tec-aberto #tela-cadastro > .ancora { flex: 0 0 calc(var(--u) * 4);
 body.retrato.tec-aberto #tela-cadastro .etapas { visibility: hidden; }
 body.retrato .ancora-mini { left: calc(var(--u) * 31); right: auto; width: calc(var(--u) * 18); top: calc(var(--u) * .6); height: calc(var(--u) * 12.5); }
 body.retrato .ancora-mini { top: calc(var(--u) * 1.6); height: calc(var(--u) * 11.4); }
+
+/* derrota: coluna do resultado ocupa a altura da tela; a correção encolhe/rola e o botão fica sempre visível */
+body:not(.retrato) #tela-resultado.derrota .resultado-texto { top: calc(var(--u) * 4); bottom: calc(var(--u) * 3.5); transform: none; display: flex; flex-direction: column; }
+#tela-resultado.derrota .resultado-texto > * { flex: none; }
+#tela-resultado.derrota .revisao { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding-right: calc(var(--u) * .6); scrollbar-width: thin; scrollbar-color: rgba(255,171,2,.5) transparent; }
+body:not(.retrato) #tela-resultado.derrota .placar > span { font-size: calc(var(--u) * 8); }
+body:not(.retrato) #tela-resultado.derrota #r-titulo { font-size: calc(var(--u) * 4.2); margin-top: calc(var(--u) * .8); }
+body:not(.retrato) #tela-resultado.derrota .sub { margin-top: calc(var(--u) * .8); }
+body:not(.retrato) #tela-resultado.derrota .revisao { margin-top: calc(var(--u) * 1.4); gap: calc(var(--u) * .8); }
+body:not(.retrato) #tela-resultado.derrota .revisao li { padding: calc(var(--u) * .9) calc(var(--u) * 1.4); }
+body:not(.retrato) #tela-resultado.derrota .rev-pergunta { font-size: calc(var(--u) * 1.7); }
+body:not(.retrato) #tela-resultado.derrota .rev-linha { font-size: calc(var(--u) * 1.55); }
+#tela-resultado.derrota .resultado-acoes { flex: none; margin-top: calc(var(--u) * 1.6); }
