@@ -37,38 +37,27 @@ export function textoWhats(c) {
   const m = c.metricas(); const dias = porDiaHora(c.leads);
   const limite = Number(c.config.limiteChopps) || 0; const ganhos = Math.max(c.stats.chopps, 0);
   const picoGeral = dias.flatMap((d) => d.horas.map((h) => ({ ...h, dia: d }))).reduce((a, b) => (b.n > (a?.n || 0) ? b : a), null);
-  const perguntas = c.estatisticaPerguntas().filter((e) => e.n >= 1);
-  const dificil = perguntas.length ? perguntas.reduce((a, b) => (pct(b.ok, b.n) < pct(a.ok, a.n) ? b : a)) : null;
   const agora = new Date();
   const L = [
     '*QUIZ EXCLUSIVE GOLD*',
-    `_${EVENTO} · ${agora.toLocaleDateString('pt-BR')} às ${horaBR(agora)}_`,
+    `_${agora.toLocaleDateString('pt-BR')} · ${horaBR(agora)}_`,
     '',
-    '*PARTICIPAÇÃO*',
-    `• Participações: *${m.total}*${m.unicos !== m.total ? ` (${m.unicos} pessoas)` : ''}`,
-    `• Desistências: ${m.desistencias}`,
+    `Participações: *${m.total}*`,
+    `Chopps ganhos: *${ganhos}*${limite ? ` de ${limite}` : ''}`,
+    `Desistências: *${m.desistencias}*`,
     '',
-    '*CHOPPS*',
-    `• Ganhos: *${ganhos}*${limite ? ` de ${limite} (restam ${Math.max(limite - ganhos, 0)})` : ''}`,
-    `• Taxa de ganho: ${pct(m.chopps, m.total)}% de quem jogou`,
+    `Associados: *${m.assoc}*`,
+    `Não associados: *${m.naoAssoc}*`,
+    `Prospects: *${m.prospects}*`,
     '',
-    '*PÚBLICO*',
-    `• Associados EG: *${m.assoc}* (${pct(m.assoc, m.total)}%)`,
-    `• Não associados: ${m.naoAssoc}`,
-    `• Prospects (não associados com placa): *${m.prospects}*`,
-    `• Sem placa informada: ${m.semPlaca}`,
-    `• Placas repetidas: ${m.placasRepetidas}`,
-    '',
-    '*QUIZ*',
-    `• Acerto médio: ${m.acertoMedio}%`,
-    ...(dificil ? [`• Mais difícil: "${dificil.texto}" (${pct(dificil.ok, dificil.n)}% de acerto)`] : []),
-    ...(picoGeral ? [`• Horário de pico: *${doisDig(picoGeral.h)}h*${dias.length > 1 ? ` do dia ${picoGeral.dia.rotulo}` : ''} (${picoGeral.n} ${picoGeral.n === 1 ? 'participação' : 'participações'})`] : []),
+    `Acerto médio: *${m.acertoMedio}%*`,
+    ...(picoGeral ? [`Pico: *${doisDig(picoGeral.h)}h*${dias.length > 1 ? ` (${picoGeral.dia.rotulo})` : ''}`] : []),
   ];
   if (dias.length > 1) {
-    L.push('', '*POR DIA*');
-    dias.forEach((d) => L.push(`• Dia ${d.numero} (${d.rotulo}): ${d.total} participações · ${d.chopps} chopps`));
+    L.push('');
+    dias.forEach((d) => L.push(`Dia ${d.numero}: *${d.total}* participações · *${d.chopps}* chopps`));
   }
-  if (location.protocol === 'https:') L.push('', `Painel: ${location.origin}${location.pathname}`);
+  if (location.protocol === 'https:') L.push('', `${location.origin}${location.pathname}`);
   return L.join('\n');
 }
 
@@ -176,7 +165,7 @@ export async function gerarExcel(c) {
       { chave: 'contato', titulo: 'Contato feito', largura: 9, alinhar: 'center' },
       { chave: 'anot', titulo: 'Anotações', largura: 30 },
     ];
-    const ws = prepararAba(wb, 'Contatos', 'Base de contatos captados', cols, { descricao: 'Todas as pessoas cadastradas no quiz, uma linha por pessoa (pelo WhatsApp). Nome, contato, placa e se já é associado. Toque no WhatsApp para abrir a conversa.' });
+    const ws = prepararAba(wb, 'Contatos', 'Base de contatos captados', cols, { descricao: 'Uma linha por pessoa. Toque no WhatsApp para conversar.' });
     const lista = [...pessoas.values()].sort((a, b) => a.primeira - b.primeira);
     preencher(ws, cols, lista.map((p, i) => {
       const l = p.l; const placas = [...p.placas];
@@ -211,7 +200,7 @@ export async function gerarExcel(c) {
       { chave: 'contato', titulo: 'Contato feito', largura: 9, alinhar: 'center' },
       { chave: 'anot', titulo: 'Anotações', largura: 28 },
     ];
-    const ws = prepararAba(wb, 'Participações', 'Todas as participações', cols, { descricao: 'Cada partida jogada (quem jogou mais de uma vez aparece mais de uma vez), em ordem de horário. Ganhadores em destaque. Toque no WhatsApp para abrir a conversa. Use "Contato feito" e "Anotações" para o acompanhamento da equipe.' });
+    const ws = prepararAba(wb, 'Participações', 'Todas as participações', cols, { descricao: 'Cada partida jogada, por horário. Ganhadores em destaque.' });
     preencher(ws, cols, leads.map((l) => {
       const vezes = c.vezesPlaca(l);
       return {
@@ -242,7 +231,7 @@ export async function gerarExcel(c) {
       { chave: 'conf', titulo: 'Conferido', largura: 10, alinhar: 'center' },
       { chave: 'anot', titulo: 'Anotações', largura: 30 },
     ];
-    const ws = prepararAba(wb, 'Ganhadores', 'Ganhadores de chopp', cols, { descricao: 'Lista de cupons para conferência no Stand. Cada código é único e aparece na tela do totem de quem ganhou.' });
+    const ws = prepararAba(wb, 'Ganhadores', 'Ganhadores de chopp', cols, { descricao: 'Cupons para conferir no Stand.' });
     preencher(ws, cols, leads.filter((l) => l.ganhouChopp).map((l, i) => ({
       n: i + 1, cupom: l.codigo || '-', nome: l.nome, whats: c.fmtWhats(l.whatsapp), whats_link: c.linkWhats(l.whatsapp),
       data: dataLocal(l.clientTime), hora: dataLocal(l.clientTime), assoc: l.associado ? 'Sim' : 'Não', conf: caixa, anot: '',
@@ -262,7 +251,7 @@ export async function gerarExcel(c) {
       { chave: 'contato', titulo: 'Contato feito', largura: 10, alinhar: 'center' },
       { chave: 'anot', titulo: 'Interesse / Anotações', largura: 36 },
     ];
-    const ws = prepararAba(wb, 'Prospects', 'Prospects (contato comercial)', cols, { descricao: 'Pessoas que ainda não são associadas e informaram a placa do veículo. Autorizaram o contato pelo WhatsApp (LGPD).' });
+    const ws = prepararAba(wb, 'Prospects', 'Prospects (contato comercial)', cols, { descricao: 'Não associados com veículo. Autorizaram contato.' });
     preencher(ws, cols, leads.filter(c.ehProspect).map((l, i) => ({
       n: i + 1, nome: l.nome, whats: c.fmtWhats(l.whatsapp), whats_link: c.linkWhats(l.whatsapp), placa: l.placa, vezes: c.vezesPlaca(l),
       ganhou: l.ganhouChopp ? 'Sim' : 'Não', data: dataLocal(l.clientTime), contato: caixa, anot: '',
@@ -278,7 +267,7 @@ export async function gerarExcel(c) {
       { chave: 'whats', titulo: 'WhatsApps', largura: 34, quebrar: true },
       { chave: 'assoc', titulo: 'Algum associado?', largura: 14, alinhar: 'center' },
     ];
-    const ws = prepararAba(wb, 'Placas repetidas', 'Placas usadas por mais de uma pessoa', cols, { descricao: 'Mesma placa informada por pessoas diferentes (ex.: moto da família ou de amigo). Útil para conferência.' });
+    const ws = prepararAba(wb, 'Placas repetidas', 'Placas usadas por mais de uma pessoa', cols, { descricao: 'Mesma placa usada por pessoas diferentes.' });
     preencher(ws, cols, [...c.placas.entries()].filter(([, ls]) => ls.length > 1).sort((a, b) => b[1].length - a[1].length).map(([placa, ls]) => ({
       placa, vezes: ls.length, nomes: ls.map((l) => l.nome).join(' / '), whats: ls.map((l) => c.fmtWhats(l.whatsapp)).join(' / '), assoc: ls.some((l) => l.associado) ? 'Sim' : 'Não',
     })));
@@ -299,7 +288,7 @@ export async function gerarExcel(c) {
       { chave: 'lgpd', titulo: 'Autorizou contato', largura: 11, alinhar: 'center' },
       { chave: 'contato', titulo: 'Contato feito', largura: 10, alinhar: 'center' },
     ];
-    const ws = prepararAba(wb, 'Desistências', 'Desistências', cols, { descricao: 'Começaram o cadastro ou o quiz e não terminaram. Só chame quem autorizou o contato (LGPD).' });
+    const ws = prepararAba(wb, 'Desistências', 'Desistências', cols, { descricao: 'Não terminaram. Só chame quem autorizou contato.' });
     preencher(ws, cols, [...c.incompletos].sort((a, b) => a.clientTime - b.clientTime).map((l, i) => ({
       n: i + 1, data: dataLocal(l.clientTime), hora: dataLocal(l.clientTime), nome: l.nome || '(não informado)',
       whats: l.whatsapp ? c.fmtWhats(l.whatsapp) : '', whats_link: l.whatsapp && l.lgpd ? c.linkWhats(l.whatsapp) : '',
@@ -321,7 +310,7 @@ export async function gerarExcel(c) {
       { chave: 'certa', titulo: 'Resposta certa', largura: 30, quebrar: true },
       { chave: 'ok', titulo: 'Resultado', largura: 10, alinhar: 'center' },
     ];
-    const ws = prepararAba(wb, 'Respostas', 'Respostas de cada participação', cols, { descricao: 'Cada linha é uma pergunta respondida. As 3 últimas de cada participação valiam o chopp.' });
+    const ws = prepararAba(wb, 'Respostas', 'Respostas de cada participação', cols, { descricao: 'Cada pergunta respondida. As 3 últimas valiam chopp.' });
     const linhas = [];
     leads.forEach((l) => (l.respostas || []).forEach((r, i) => {
       const tema = BANCO_PADRAO.find((b) => b.id === r.id)?.tag || '';
@@ -336,21 +325,21 @@ export async function gerarExcel(c) {
     const colsR = [
       { chave: 'a', titulo: 'Indicador', largura: 36, negrito: true }, { chave: 'b', titulo: 'Valor', largura: 14, alinhar: 'center', negrito: true }, { chave: 'c', titulo: 'Detalhe', largura: 58, quebrar: true },
     ];
-    const ws = prepararAba(wb, 'Resumo', 'Resumo do evento', colsR, { paisagem: false, descricao: 'Regra do quiz: 5 perguntas (2 de aquecimento + 3 valendo chopp). Ganha o chopp quem acerta as 3 que valem.' });
+    const ws = prepararAba(wb, 'Resumo', 'Resumo do evento', colsR, { paisagem: false, descricao: 'Regra: 5 perguntas. Ganha quem acerta as 3 últimas.' });
     const picoGeral = dias.flatMap((d) => d.horas.map((h) => ({ ...h, dia: d }))).reduce((a, b) => (b.n > (a?.n || 0) ? b : a), null);
     const semPlaca = { 'nao-lembra': 0, 'sem-veiculo': 0, 'nao-informar': 0 };
     leads.forEach((l) => { if (!l.placa && semPlaca[l.placaStatus] !== undefined) semPlaca[l.placaStatus] += 1; });
     preencher(ws, colsR, [
-      { a: 'Participações', b: m.total, c: `${m.unicos} ${m.unicos === 1 ? 'pessoa diferente' : 'pessoas diferentes'}` },
-      { a: 'Chopps ganhos', b: ganhos, c: limite ? `Limite de ${limite} · restam ${Math.max(limite - ganhos, 0)}` : 'Sem limite definido', b_cor: COR.verde },
-      { a: 'Taxa de ganho', b: `${pct(m.chopps, m.total)}%`, c: 'Dos que jogaram até o fim' },
-      { a: 'Associados Exclusive Gold', b: m.assoc, c: `${pct(m.assoc, m.total)}% das participações` },
-      { a: 'Não associados', b: m.naoAssoc, c: `${pct(m.naoAssoc, m.total)}% das participações` },
-      { a: 'Prospects', b: m.prospects, c: 'Não associados que informaram a placa: contato comercial (aba Prospects)', b_cor: COR.azul },
-      { a: 'Sem placa informada', b: m.semPlaca, c: `Não lembra: ${semPlaca['nao-lembra']} · Sem veículo: ${semPlaca['sem-veiculo']} · Preferiu não informar: ${semPlaca['nao-informar']}` },
-      { a: 'Placas repetidas', b: m.placasRepetidas, c: 'Placas usadas por mais de uma pessoa (aba Placas repetidas)' },
-      { a: 'Desistências', b: m.desistencias, c: 'Começaram e não terminaram (aba Desistências)' },
-      { a: 'Acerto médio', b: `${m.acertoMedio}%`, c: 'De todas as respostas dadas' },
+      { a: 'Participações', b: m.total, c: `${m.unicos} ${m.unicos === 1 ? 'pessoa' : 'pessoas'}` },
+      { a: 'Chopps ganhos', b: ganhos, c: limite ? `de ${limite}` : '', b_cor: COR.verde },
+      { a: 'Taxa de ganho', b: `${pct(m.chopps, m.total)}%`, c: '' },
+      { a: 'Associados Exclusive Gold', b: m.assoc, c: `${pct(m.assoc, m.total)}%` },
+      { a: 'Não associados', b: m.naoAssoc, c: `${pct(m.naoAssoc, m.total)}%` },
+      { a: 'Prospects', b: m.prospects, c: 'Ver aba Prospects', b_cor: COR.azul },
+      { a: 'Sem placa informada', b: m.semPlaca, c: `${semPlaca['nao-lembra']} não lembra · ${semPlaca['sem-veiculo']} sem veículo · ${semPlaca['nao-informar']} não informou` },
+      { a: 'Placas repetidas', b: m.placasRepetidas, c: 'Ver aba Placas repetidas' },
+      { a: 'Desistências', b: m.desistencias, c: 'Ver aba Desistências' },
+      { a: 'Acerto médio', b: `${m.acertoMedio}%`, c: '' },
       { a: 'Horário de pico', b: picoGeral ? `${doisDig(picoGeral.h)}h` : '-', c: picoGeral ? `${picoGeral.n} participações${dias.length > 1 ? ` no dia ${picoGeral.dia.rotulo}` : ''}` : '' },
     ], { filtro: false });
 

@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="dark">
 <title>Painel do Quiz</title>
 <link rel="icon" href="assets/icone.png">
-<link rel="stylesheet" href="css/painel.css?v=20261015111126">
+<link rel="stylesheet" href="css/painel.css?v=20261015111434">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -54,7 +54,7 @@
       <label class="fl"><svg><use href="#p-cadeado"/></svg><input type="password" id="l-senha" autocomplete="current-password" placeholder=" " required><span>Senha</span></label>
       <p class="erro" id="l-erro" role="alert"></p>
       <button class="btn ouro grande" type="submit"><span>Entrar</span><svg><use href="#p-seta"/></svg></button>
-      <p class="info">Você entra uma vez neste aparelho e o painel fica conectado.</p>
+      <p class="info">Fica conectado neste aparelho.</p>
     </form>
   </section>
 
@@ -93,8 +93,8 @@
       </div>
       <div class="kpis">
         <div class="kpi e" style="--i:3"><span class="kpi-ic ouro"><svg><use href="#p-estrela"/></svg></span><span class="kpi-rot">Prospects</span><strong id="k-prospects" data-num>0</strong><small id="k-prospects-n">não associados com veículo</small></div>
-        <div class="kpi e" style="--i:4"><span class="kpi-ic azul"><svg><use href="#p-placa"/></svg></span><span class="kpi-rot">Placas repetidas</span><strong id="k-repetidas" data-num>0</strong><small>usadas por mais de uma pessoa</small></div>
-        <div class="kpi e" style="--i:5"><span class="kpi-ic vermelho"><svg><use href="#p-sair"/></svg></span><span class="kpi-rot">Desistências</span><strong id="k-desist" data-num>0</strong><small>começaram e não terminaram</small></div>
+        <div class="kpi e" style="--i:4"><span class="kpi-ic azul"><svg><use href="#p-placa"/></svg></span><span class="kpi-rot">Placas repetidas</span><strong id="k-repetidas" data-num>0</strong><small>mesma placa, pessoas diferentes</small></div>
+        <div class="kpi e" style="--i:5"><span class="kpi-ic vermelho"><svg><use href="#p-sair"/></svg></span><span class="kpi-rot">Desistências</span><strong id="k-desist" data-num>0</strong><small>não terminaram</small></div>
         <div class="kpi e" style="--i:6"><span class="kpi-ic azul"><svg><use href="#p-alvo"/></svg></span><span class="kpi-rot">Acerto médio</span><strong id="k-acerto">0%</strong><small>das respostas</small></div>
       </div>
       <div class="acoes e" style="--i:7">
@@ -147,13 +147,13 @@
           <label class="chave">
             <input type="checkbox" id="c-pausado">
             <span class="cfg-ic"><svg><use href="#p-pausa"/></svg></span>
-            <span class="chave-txt"><strong>Pausar o quiz</strong><small>O totem mostra "Já voltamos!" até você reativar.</small></span>
+            <span class="chave-txt"><strong>Pausar o quiz</strong><small>O totem mostra "Já voltamos!".</small></span>
             <span class="trilho"><i></i></span>
           </label>
           <label class="chave">
             <input type="checkbox" id="c-som">
             <span class="cfg-ic"><svg><use href="#p-som"/></svg></span>
-            <span class="chave-txt"><strong>Sons no totem</strong><small>Efeitos sonoros do quiz.</small></span>
+            <span class="chave-txt"><strong>Sons no totem</strong><small>Efeitos do quiz.</small></span>
             <span class="trilho"><i></i></span>
           </label>
         </div>
@@ -165,11 +165,11 @@
               <button class="btn ouro" id="c-limite-salvar">Salvar</button>
             </span>
           </label>
-          <p class="info">Ganhos até agora: <strong id="c-ganhos">0</strong>. Ao chegar no limite, quem acertar não recebe cupom e a equipe é avisada para entrar em contato.</p>
+          <p class="info">Ganhos até agora: <strong id="c-ganhos">0</strong></p>
         </div>
         <div class="cartao zona-perigo e" style="--i:2">
           <h2>Limpar dados de teste</h2>
-          <small>Apaga participações, desistências, cupons e contadores, no painel e nos totens. Use só antes do evento, com os tablets ligados e com internet.</small>
+          <small>Apaga tudo, no painel e nos totens. Use antes do evento, com internet.</small>
           <button class="btn perigo" id="c-limpar"><svg><use href="#p-lixo"/></svg>Limpar todos os dados</button>
         </div>
       </div>
@@ -202,8 +202,8 @@
     <div class="chips" id="env-recentes" hidden></div>
     <p class="erro" id="env-erro" role="alert"></p>
     <div class="env-opcoes">
-      <button class="opcao-envio" id="env-resumo"><span class="kpi-ic verde"><svg><use href="#p-whats"/></svg></span><span><b>Resumo em texto</b><small>Os números do quiz direto na conversa.</small></span></button>
-      <button class="opcao-envio" id="env-excel"><span class="kpi-ic ouro"><svg><use href="#p-baixar"/></svg></span><span><b>Planilha Excel</b><small>Baixa o arquivo e abre a conversa para você anexar.</small></span></button>
+      <button class="opcao-envio" id="env-resumo"><span class="kpi-ic verde"><svg><use href="#p-whats"/></svg></span><span><b>Resumo em texto</b><small>Os números na conversa.</small></span></button>
+      <button class="opcao-envio" id="env-excel"><span class="kpi-ic ouro"><svg><use href="#p-baixar"/></svg></span><span><b>Planilha Excel</b><small>Baixa e abre a conversa para anexar.</small></span></button>
     </div>
     <div class="dlg-acoes"><button class="btn" id="env-cancelar">Cancelar</button></div>
   </div>
@@ -214,7 +214,7 @@
   <div class="dlg-caixa">
     <h2>Apagar todos os dados?</h2>
     <p>Isso apaga <b>definitivamente</b> <span id="limpar-resumo"></span> Não dá para desfazer.</p>
-    <p class="info">Dica: baixe o Excel antes, por segurança. Faça a limpeza com os tablets ligados e com internet.</p>
+    <p class="info">Dica: baixe o Excel antes.</p>
     <button class="btn" id="limpar-excel"><svg><use href="#p-baixar"/></svg>Baixar Excel antes</button>
     <label class="campo">Senha de confirmação<input type="password" id="limpar-senha" inputmode="numeric" autocomplete="off"></label>
     <label class="ciente"><input type="checkbox" id="limpar-ciente"> Entendo que todos os dados serão apagados</label>
@@ -226,7 +226,7 @@
   </div>
 </div>
 
-<script src="config.js?v=20261015111126"></script>
-<script type="module" src="js/painel.js?v=20261015111126"></script>
+<script src="config.js?v=20261015111434"></script>
+<script type="module" src="js/painel.js?v=20261015111434"></script>
 </body>
 </html>

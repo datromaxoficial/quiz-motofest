@@ -137,20 +137,20 @@ function render() {
   placasCache = mapaPlacas();
   const m = metricas();
   contar($('#k-prospects'), m.prospects);
-  $('#k-prospects-n').textContent = `não associados com veículo · ${m.semPlaca} sem placa`;
+  $('#k-prospects-n').textContent = 'não associados com veículo';
   contar($('#k-repetidas'), m.placasRepetidas);
   contar($('#k-desist'), m.desistencias);
   $('#cont-part').textContent = m.unicos;
   contar($('#k-total'), m.total);
-  $('#k-unicos').textContent = `${m.unicos} ${m.unicos === 1 ? 'pessoa diferente' : 'pessoas diferentes'}`;
+  $('#k-unicos').textContent = `${m.unicos} ${m.unicos === 1 ? 'pessoa' : 'pessoas'}`;
   const limite = Number(config.limiteChopps) || 0;
   const ganhos = Math.max(stats.chopps, 0);
   contar($('#k-chopps'), ganhos);
-  $('#k-estoque').textContent = limite ? `de ${limite} · restam ${Math.max(limite - ganhos, 0)}` : 'sem limite definido';
+  $('#k-estoque').textContent = limite ? `de ${limite} · restam ${Math.max(limite - ganhos, 0)}` : 'sem limite';
   $('#k-barra').style.width = limite ? `${Math.min(pct(ganhos, limite), 100)}%` : '0';
   $('#k-barra').parentElement.hidden = !limite;
   contar($('#k-assoc'), pct(m.assoc, m.total), '%');
-  $('#k-assoc-n').textContent = `${m.assoc} ${m.assoc === 1 ? 'associado' : 'associados'} · ${m.naoAssoc} ${m.naoAssoc === 1 ? 'não associado' : 'não associados'}`;
+  $('#k-assoc-n').textContent = `${m.assoc} de ${m.total}`;
   $('#k-assoc-barra').style.width = `${pct(m.assoc, m.total)}%`;
   contar($('#k-acerto'), m.acertoMedio, '%');
   $('#c-ganhos').textContent = ganhos;
@@ -259,8 +259,8 @@ function tabela() {
   const desist = $('#filtro').value === 'incompletos';
   $('#vazio').hidden = ls.length > 0;
   $('#lista-info').textContent = desist
-    ? `${ls.length} ${ls.length === 1 ? 'pessoa começou' : 'pessoas começaram'} e não terminou. Só chame quem autorizou o contato.`
-    : `${ls.length} ${ls.length === 1 ? 'pessoa' : 'pessoas'} · cada linha é um contato captado. Toque no WhatsApp para conversar.`;
+    ? `${ls.length} ${ls.length === 1 ? 'desistência' : 'desistências'}`
+    : `${ls.length} ${ls.length === 1 ? 'contato' : 'contatos'}`;
   $('#tabela').innerHTML = ls.map((p, i) => {
     const l = p.recente;
     const placaCel = `<div class="placa-cel">${p.placas.length
