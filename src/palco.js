@@ -245,6 +245,7 @@ export class Palco {
   ouro(ligado) { this.modoOuroAlvo = ligado ? 1 : 0; }
 
   falar(texto, ms = 2800) {
+    if (this.mudo) return; // teclado aberto: o EGon fica quieto no canto para não cobrir o formulário
     clearTimeout(this.tFala); clearInterval(this.tDigita);
     const b = this.balao; const s = this.balaoTexto;
     b.classList.remove('mostra'); void b.offsetWidth; b.classList.add('mostra');

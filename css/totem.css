@@ -681,31 +681,76 @@ body.leve .cta-luz, body.leve .voucher-luz { display: none; }
 @keyframes carimbo-leve { from { opacity: 0; transform: scale(2.4) rotate(-6deg); } to { opacity: 1; transform: none; } }
 
 /* ================= TECLADO PRÓPRIO DO QUIZ (tablet) ================= */
-.teclado { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding: calc(var(--u) * 1.2) calc(var(--u) * 2) calc(var(--u) * 1.6);
-  background: linear-gradient(180deg, #0A1E46, #00142F); border-top: 1px solid rgba(255,171,2,.35); box-shadow: 0 calc(var(--u) * -2) calc(var(--u) * 5) rgba(0,4,16,.55);
-  transform: translateY(100%); transition: transform .22s var(--suave); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.teclado { --tk: calc(var(--u) * 9.4); --th: calc(var(--u) * 7.2); --tg: calc(var(--u) * .8);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding: calc(var(--u) * .6) calc(var(--u) * 2) calc(var(--u) * 1.8);
+  background: linear-gradient(180deg, #0B2050, #00142F 70%); border-top: 1px solid rgba(255,171,2,.3); box-shadow: 0 calc(var(--u) * -2) calc(var(--u) * 5) rgba(0,4,16,.55);
+  transform: translateY(100%); transition: transform .22s var(--suave); touch-action: none; user-select: none; -webkit-user-select: none; }
 .teclado[hidden] { display: none; }
 .teclado.aberto { transform: none; }
-.teclado::before { content: ''; position: absolute; left: 15%; right: 15%; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--marca), transparent); }
-.tec-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: calc(var(--u) * 1); }
-.tec-titulo { font-weight: 800; font-size: calc(var(--u) * 1.6); letter-spacing: .12em; text-transform: uppercase; color: var(--marca-claro); }
-.tec-fechar { font-weight: 800; font-size: calc(var(--u) * 1.6); color: var(--texto-2); padding: .5em 1em; border-radius: 99px; border: 1px solid var(--vidro-borda); }
-.tec-teclas { display: flex; flex-direction: column; gap: calc(var(--u) * .8); max-width: calc(var(--u) * 112); margin: 0 auto; }
-.tec-linha { display: flex; gap: calc(var(--u) * .8); justify-content: center; }
-.tec { flex: 1 1 0; max-width: calc(var(--u) * 9); height: calc(var(--u) * 6); border-radius: calc(var(--u) * 1.2); font-weight: 800; font-size: calc(var(--u) * 2.5); color: #fff;
-  background: linear-gradient(180deg, #1A3570, #12295A); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 calc(var(--u) * .35) 0 #061436; transition: transform .08s, background .12s; }
-.tec:active, .tec.apertou { transform: translateY(calc(var(--u) * .25)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 calc(var(--u) * .1) 0 #061436; }
-.tec:active { background: linear-gradient(180deg, #24448C, #1A3570); }
-.tec-apagar { max-width: calc(var(--u) * 14); flex-grow: 1.6; color: var(--marca-claro); font-size: calc(var(--u) * 2.4); }
-.tec-espaco { max-width: calc(var(--u) * 56); flex-grow: 6; font-size: calc(var(--u) * 1.8); color: var(--texto-2); text-transform: uppercase; letter-spacing: .1em; }
-.tec-prox { max-width: calc(var(--u) * 26); flex-grow: 2.6; color: var(--marca-escuro); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: calc(var(--u) * 2.2);
-  background: linear-gradient(180deg, #FFE08A, var(--marca) 60%, #E89400); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 calc(var(--u) * .35) 0 #8A5600; }
-.teclado[data-tipo="nome"] .tec-linha:nth-child(4) .tec { font-size: calc(var(--u) * 2.2); color: var(--marca-claro); }
-.teclado[data-tipo="whats"] .tec-teclas { max-width: calc(var(--u) * 46); }
-.teclado[data-tipo="whats"] .tec { max-width: none; height: calc(var(--u) * 6.4); font-size: calc(var(--u) * 3); }
-.teclado[data-tipo="whats"] .tec-prox { font-size: calc(var(--u) * 1.9); }
+.teclado::before { content: ''; position: absolute; left: 20%; right: 20%; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--marca), transparent); }
+.tec-topo { position: relative; height: calc(var(--u) * 3.4); display: flex; align-items: center; justify-content: center; }
+.tec-titulo { font-weight: 800; font-size: calc(var(--u) * 1.35); letter-spacing: .16em; text-transform: uppercase; color: rgba(255,209,102,.75); }
+.tec-fechar { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: calc(var(--u) * 5); height: calc(var(--u) * 3.2); border-radius: 99px; display: grid; place-items: center;
+  color: rgba(169,188,219,.55); font-size: calc(var(--u) * 2.4); }
+.tec-fechar:active { color: var(--texto-2); background: rgba(255,255,255,.06); }
+.tec-teclas { display: flex; flex-direction: column; align-items: center; gap: var(--tg); }
+.tec-linha { display: flex; gap: var(--tg); justify-content: center; }
+.tec { width: var(--tk); height: var(--th); flex: none; border-radius: calc(var(--u) * 1.2); display: grid; place-items: center;
+  font-weight: 800; font-size: calc(var(--u) * 2.8); color: #fff;
+  background: linear-gradient(180deg, #1C3A78, #142C60); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 calc(var(--u) * .4) 0 #071638;
+  transition: transform .07s, background .1s, box-shadow .07s; }
+.tec svg { width: 1.1em; height: 1.1em; }
+.tec.apertada { transform: translateY(calc(var(--u) * .3)); background: linear-gradient(180deg, #2A4C94, #1C3A78); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 calc(var(--u) * .1) 0 #071638; }
+.tec-acento::after { content: ''; position: absolute; } /* marcador sutil de "segure para acentos" */
+.tec-acento { position: relative; }
+.tec-acento::after { right: 18%; top: 16%; width: calc(var(--u) * .55); height: calc(var(--u) * .55); border-radius: 50%; background: rgba(255,209,102,.55); }
+/* linha de baixo proporcional: espaço largo, Próximo/Pronto destacado */
+.tec-apagar { width: calc(var(--tk) * 1.6 + var(--tg) * .6); color: var(--marca-claro); }
+.tec-espaco { width: calc(var(--tk) * 6 + var(--tg) * 5); font-size: calc(var(--u) * 1.7); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(169,188,219,.75); }
+.tec-prox { width: calc(var(--tk) * 2.6 + var(--tg) * 1.6); color: var(--marca-escuro); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: calc(var(--u) * 2.1);
+  background: linear-gradient(180deg, #FFE08A, var(--marca) 60%, #E89400); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 calc(var(--u) * .4) 0 #8A5600; display: flex; gap: .4em; justify-content: center; align-items: center; }
+.tec-prox.apertada { background: linear-gradient(180deg, #FFE9A8, #FFB82E 60%, #EF9E10); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 calc(var(--u) * .1) 0 #8A5600; }
 .teclado[data-tipo="placa"] .tec-linha:first-child .tec { color: var(--marca-claro); }
-body.retrato .tec { height: calc(var(--u) * 7.4); font-size: calc(var(--u) * 3); }
-body.retrato .tec-titulo, body.retrato .tec-fechar { font-size: calc(var(--u) * 2.2); }
-/* com o teclado, o cartão sobe suave e o campo em foco fica visível */
-#form { transition: transform .45s var(--suave), margin-top .3s var(--suave); }
+.teclado[data-tipo="placa"] .tec-prox { width: calc(var(--tk) * 4 + var(--tg) * 3); }
+/* WhatsApp: teclado numérico grande e central */
+.teclado[data-tipo="whats"] { --tk: calc(var(--u) * 15); --th: calc(var(--u) * 7.6); }
+.teclado[data-tipo="whats"] .tec { font-size: calc(var(--u) * 3.6); }
+.teclado[data-tipo="whats"] .tec-apagar, .teclado[data-tipo="whats"] .tec-prox { width: var(--tk); }
+.teclado[data-tipo="whats"] .tec-prox { font-size: calc(var(--u) * 2); }
+/* balão da tecla ao tocar (como no celular) */
+.tec-previa { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, calc(-100% - var(--u) * .4));
+  min-width: calc(var(--lk) * 1.25); height: calc(var(--u) * 9); padding: 0 calc(var(--u) * 1); border-radius: calc(var(--u) * 1.6);
+  display: grid; place-items: center; font-weight: 900; font-size: calc(var(--u) * 4.4); color: var(--marca-escuro);
+  background: linear-gradient(180deg, #FFF3CF, var(--marca-claro)); box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 2.4) rgba(0,4,16,.55); }
+.tec-previa[hidden] { display: none; }
+/* balão de acentos ao segurar a vogal ou o C */
+.tec-acentos { position: absolute; z-index: 3; display: flex; gap: calc(var(--u) * .5); padding: calc(var(--u) * .6); border-radius: calc(var(--u) * 1.6);
+  background: #0B2050; border: 1.5px solid rgba(255,171,2,.6); box-shadow: 0 calc(var(--u) * 1.2) calc(var(--u) * 3) rgba(0,4,16,.6); animation: acentos-entra .16s var(--mola); }
+.tec-acentos[hidden] { display: none; }
+@keyframes acentos-entra { from { opacity: 0; transform: translateY(calc(var(--u) * 1)) scale(.92); } }
+.tec-op { width: calc(var(--u) * 8.4); height: calc(var(--u) * 8.4); border-radius: calc(var(--u) * 1.1); font-weight: 900; font-size: calc(var(--u) * 3.4); color: #fff; background: rgba(255,255,255,.06); }
+.tec-op.ativa { color: var(--marca-escuro); background: linear-gradient(180deg, #FFE08A, var(--marca)); }
+body.retrato .teclado { --tk: calc((100vw - var(--u) * 4 - var(--u) * .8 * 9) / 10); --th: calc(var(--u) * 8.4); }
+body.retrato .teclado[data-tipo="whats"] { --tk: calc(var(--u) * 22); --th: calc(var(--u) * 9); }
+body.retrato .tec-titulo { font-size: calc(var(--u) * 1.9); }
+
+/* teclado aberto: cartão compacto lá em cima (campos + "Não sei a placa"), EGon pequeno e inteiro no canto */
+#form { transition: transform .45s var(--suave), margin-top .3s var(--suave), top .3s var(--suave); }
+body.tec-aberto #form .cartao-topo, body.tec-aberto #form .campo-assoc, body.tec-aberto #form .cartao-pe { display: none; }
+body.tec-aberto:not(.retrato) #form { top: calc(var(--u) * 11.5); padding-top: calc(var(--u) * 2.4); padding-bottom: calc(var(--u) * 2); }
+.ancora-mini { position: absolute; pointer-events: none; left: calc(var(--u) * 9); width: calc(var(--u) * 26); top: calc(var(--u) * 13); height: calc(var(--u) * 26); }
+body.retrato .ancora-mini { left: auto; right: calc(var(--u) * 3); top: calc(var(--u) * 1); width: calc(var(--u) * 16); height: calc(var(--u) * 17); }
+body.retrato.tec-aberto #tela-cadastro > .ancora { flex: 0 0 calc(var(--u) * 6); min-height: 0; }
+
+.teclado[data-tipo="placa"] { --th: calc(var(--u) * 6.4); }
+.ancora-mini { top: calc(var(--u) * 12); height: calc(var(--u) * 25); width: calc(var(--u) * 25); }
+.ancora-mini { top: calc(var(--u) * 14); height: calc(var(--u) * 24); width: calc(var(--u) * 24); }
+body.retrato .ancora-mini { top: calc(var(--u) * 1); height: calc(var(--u) * 17); width: calc(var(--u) * 16); }
+/* retrato com teclado aberto: cartão logo abaixo do topo (sem espaços automáticos que anulam a subida) */
+body.retrato.tec-aberto #tela-cadastro { justify-content: flex-start; }
+body.retrato.tec-aberto #tela-cadastro > .topo, body.retrato.tec-aberto #tela-cadastro > #form { margin-bottom: 0; }
+body.retrato.tec-aberto #tela-cadastro > .ancora { flex: 0 0 calc(var(--u) * 4); min-height: 0; max-height: none; margin: 0; }
+/* retrato com teclado: o EGon fica inteiro no meio do topo (as etapas saem por um instante) */
+body.retrato.tec-aberto #tela-cadastro .etapas { visibility: hidden; }
+body.retrato .ancora-mini { left: calc(var(--u) * 31); right: auto; width: calc(var(--u) * 18); top: calc(var(--u) * .6); height: calc(var(--u) * 12.5); }
+body.retrato .ancora-mini { top: calc(var(--u) * 1.6); height: calc(var(--u) * 11.4); }

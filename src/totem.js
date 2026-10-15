@@ -371,8 +371,18 @@ $('#f-lgpd').addEventListener('change', (e) => {
 const teclado = modoTablet ? criarTeclado({
   campos: [[fNome, 'nome'], [fWhats, 'whats'], [fPlaca, 'placa']],
   tocar,
-  aoAbrir: () => requestAnimationFrame(ajustarTeclado),
-  aoFechar: () => setTimeout(ajustarTeclado, 30),
+  // Teclado aberto: o cartão fica compacto lá em cima e o EGon, menor, vai inteiro para o canto.
+  aoAbrir: () => {
+    document.body.classList.add('tec-aberto');
+    if (!palco.mudo) { palco.calar(); palco.mudo = true; }
+    if (telaAtual === 'cadastro' && palco.ancora !== $('#ancora-teclado')) palco.irPara($('#ancora-teclado'), { semAnel: true, balao: 'dir' });
+    requestAnimationFrame(ajustarTeclado);
+  },
+  aoFechar: () => {
+    document.body.classList.remove('tec-aberto'); palco.mudo = false;
+    if (telaAtual === 'cadastro') palco.irPara($('#ancora-cadastro'), { semAnel: true, balao: 'cima' });
+    setTimeout(ajustarTeclado, 30);
+  },
   aoProximo: (inp, tipo) => {
     if (tipo === 'nome') fWhats.focus();
     else if (tipo === 'whats' && !fPlaca.closest('.campo').classList.contains('sem-placa') && !valido.placa) fPlaca.focus();
@@ -408,10 +418,15 @@ function ajustarTeclado() {
   const vv = window.visualViewport; const alturaVisivel = teclado?.aberto ? teclado.topo() : (vv ? vv.height : innerHeight);
   // Desloca pela margem (a animação de entrada da tela trava o transform do cartão).
   if (!el || el.tagName !== 'INPUT' || telaAtual !== 'cadastro') { form.style.marginTop = ''; return; }
-  const mt = parseFloat(getComputedStyle(form).marginTop) || 0; // deslocamento atual (pode estar no meio da animação)
-  const r = el.getBoundingClientRect(); const fundoCampo = r.bottom - mt;
-  const margem = 24; const desloc = Math.max(0, Math.round(fundoCampo - (alturaVisivel - margem)));
-  form.dataset.desloc = desloc; form.style.marginTop = desloc ? `${-desloc}px` : '';
+  // margem "natural" do cartão (a do CSS, sem deslocamento nosso)
+  if (!form.style.marginTop) form.dataset.mtBase = parseFloat(getComputedStyle(form).marginTop) || 0;
+  const base = Number(form.dataset.mtBase) || 0;
+  const mt = parseFloat(getComputedStyle(form).marginTop) || 0; // margem atual (pode estar no meio da animação)
+  // WhatsApp e placa: a linha inteira, para o "Não sei a placa" também ficar visível
+  const r = (teclado?.aberto && el.closest('.linha') || el).getBoundingClientRect();
+  const margem = 24; const limite = alturaVisivel - margem;
+  const nova = Math.min(base, mt - (r.bottom - limite)); // margem que deixa o fundo do bloco no limite
+  form.dataset.desloc = Math.round(base - nova); form.style.marginTop = nova < base - 0.5 ? `${Math.round(nova)}px` : '';
 }
 window.visualViewport?.addEventListener('resize', ajustarTeclado);
 document.addEventListener('focusout', () => setTimeout(ajustarTeclado, 120));

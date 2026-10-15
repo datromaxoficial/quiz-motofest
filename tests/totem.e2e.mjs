@@ -228,9 +228,18 @@ test('tablet: modo leve e teclado próprio (nome só letras, WhatsApp só númer
   assert.equal(await page.getAttribute('#f-nome', 'inputmode'), 'none', 'teclado do sistema não abre');
   const tecla = (k) => page.tap(`.teclado [data-k="${k}"]`);
   const acima = (sel) => page.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom <= innerHeight - document.querySelector('.teclado').offsetHeight, sel);
-  await page.tap('#f-nome'); await page.waitForSelector('.teclado.aberto');
+  await page.tap('#f-nome'); await page.waitForSelector('.teclado.aberto'); assert.equal(await page.evaluate(() => document.querySelector('#f-whats').type + document.querySelector('#f-nome').readOnly), 'texttrue', 'sem teclado do sistema');
   assert.equal(await page.locator('.teclado [data-k="1"]').count(), 0, 'nome não tem números');
-  for (const k of ['J', 'O', 'S', 'É', '␣', 'L', 'I', 'M', 'A']) await tecla(k);
+  // acento: segurar a vogal abre o balão; arrastar até a opção e soltar
+  const segurar = async (k, op) => {
+    const b = await page.locator(`.teclado [data-k="${k}"]`).boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+    await page.waitForSelector('.tec-acentos:not([hidden])', { timeout: 3000 });
+    const o = await page.locator(`.tec-op[data-op="${op}"]`).boundingBox(); await page.mouse.move(o.x + o.width / 2, o.y + o.height / 2, { steps: 4 }); await page.mouse.up();
+  };
+  assert.equal(await page.locator('.teclado [data-k="É"]').count(), 0, 'sem linha de acentos');
+  for (const k of ['J', 'O', 'S']) await tecla(k);
+  await segurar('E', 'É');
+  for (const k of ['␣', 'L', 'I', 'M', 'A']) await tecla(k);
   assert.equal(await page.inputValue('#f-nome'), 'José Lima');
   await tecla('→'); await page.waitForTimeout(700);
   assert.equal(await page.evaluate(() => document.activeElement.id), 'f-whats');
